@@ -1521,7 +1521,7 @@ function renderPlayerProfile() {
           <div class="profile-section-title">🔑 Change Password</div>
           <div class="profile-form-row">
             <div><label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:#888;display:block;margin-bottom:5px">Current Password</label>
-              <input type="password" id="prof-pw-cur" class="form-input" autocomplete="current-password"></div>
+              <input type="password" id="prof-pw-cur" class="form-input" autocomplete="off"></div>
             <div></div>
           </div>
           <div class="profile-form-row">
