@@ -1521,14 +1521,14 @@ function renderPlayerProfile() {
           <div class="profile-section-title">🔑 Change Password</div>
           <div class="profile-form-row">
             <div><label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:#888;display:block;margin-bottom:5px">Current Password</label>
-              <input type="password" id="prof-pw-cur" class="form-input" autocomplete="off"></div>
+              <input type="text" id="prof-pw-cur" class="form-input" autocomplete="off" placeholder="••••••••" style="letter-spacing:3px;font-size:18px"></div>
             <div></div>
           </div>
           <div class="profile-form-row">
             <div><label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:#888;display:block;margin-bottom:5px">New Password</label>
-              <input type="password" id="prof-pw-new" class="form-input" autocomplete="new-password"></div>
+              <input type="text" id="prof-pw-new" class="form-input" autocomplete="off" placeholder="••••••••" style="letter-spacing:3px;font-size:18px"></div>
             <div><label style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.4px;color:#888;display:block;margin-bottom:5px">Confirm New Password</label>
-              <input type="password" id="prof-pw-confirm" class="form-input" autocomplete="new-password"></div>
+              <input type="text" id="prof-pw-confirm" class="form-input" autocomplete="off" placeholder="••••••••" style="letter-spacing:3px;font-size:18px"></div>
           </div>
           <div id="prof-pw-msg" style="font-size:13px;min-height:18px;margin-bottom:10px"></div>
           <button class="btn btn-primary" onclick="profileChangePassword()">Update Password</button>
@@ -1544,6 +1544,9 @@ function renderPlayerProfile() {
       </div>
     </section>
   `);
+
+  // Initialize password field masking after the profile HTML is rendered
+  profileInitPasswordFields();
 }
 
 // Profile page helper globals
@@ -1581,11 +1584,49 @@ window.profileSaveInfo = function() {
   setTimeout(() => { if (msg) msg.textContent = ''; }, 3000);
 };
 
+window.profileInitPasswordFields = function() {
+  const fields = ['prof-pw-cur', 'prof-pw-new', 'prof-pw-confirm'];
+
+  fields.forEach(fieldId => {
+    const field = document.getElementById(fieldId);
+    if (!field) return;
+
+    // Initialize the actual password storage
+    field.dataset.actualPassword = '';
+
+    field.addEventListener('input', function(e) {
+      const data = e.data; // Character(s) inserted (null for backspace/delete)
+      const displayLength = this.value.length;
+      const actualLength = (this.dataset.actualPassword || '').length;
+
+      if (data) {
+        // Characters were typed - add them to actual password
+        this.dataset.actualPassword += data;
+      } else if (displayLength < actualLength) {
+        // Characters were deleted via backspace/delete
+        this.dataset.actualPassword = this.dataset.actualPassword.substring(0, displayLength);
+      }
+
+      // Display masked version with bullet characters
+      this.value = '•'.repeat(this.dataset.actualPassword.length);
+
+      // Keep cursor at the end
+      setTimeout(() => { this.selectionStart = this.selectionEnd = this.value.length; }, 0);
+    });
+  });
+};
+
 window.profileChangePassword = function() {
   const msg = document.getElementById('prof-pw-msg');
-  const cur = document.getElementById('prof-pw-cur')?.value;
-  const nw = document.getElementById('prof-pw-new')?.value;
-  const conf = document.getElementById('prof-pw-confirm')?.value;
+  const curField = document.getElementById('prof-pw-cur');
+  const newField = document.getElementById('prof-pw-new');
+  const confField = document.getElementById('prof-pw-confirm');
+
+  // Get actual password values from data attributes
+  const cur = curField?.dataset.actualPassword || '';
+  const nw = newField?.dataset.actualPassword || '';
+  const conf = confField?.dataset.actualPassword || '';
+
   const player = PlayerAuth.getPlayer();
   if (!player) return;
   if (player.credentials?.password !== cur) { msg.style.color='var(--red)'; msg.textContent='Current password is incorrect.'; return; }
@@ -1594,9 +1635,12 @@ window.profileChangePassword = function() {
   PlayerAuth.updateProfile({ credentials: { ...player.credentials, password: nw } });
   msg.style.color = '#15803d';
   msg.textContent = '✓ Password updated!';
-  document.getElementById('prof-pw-cur').value = '';
-  document.getElementById('prof-pw-new').value = '';
-  document.getElementById('prof-pw-confirm').value = '';
+  curField.dataset.actualPassword = '';
+  newField.dataset.actualPassword = '';
+  confField.dataset.actualPassword = '';
+  curField.value = '';
+  newField.value = '';
+  confField.value = '';
   setTimeout(() => { if (msg) msg.textContent = ''; }, 3000);
 };
 
