@@ -66,8 +66,13 @@ const App = {
       <li class="nav-item"><a class="nav-link" data-route="/news">News</a></li>
       <li class="nav-item"><a class="nav-link" data-route="/tournaments">Tournaments</a></li>
       <li class="nav-item"><a class="nav-link" data-route="/about">About</a></li>
-      <a class="nav-link nav-admin-btn" href="admin.html">⚙ Admin</a>
     `;
+    // Inject auth slot — populated by HeroesAuth.refreshNavAuth()
+    const navEl = document.getElementById('main-nav');
+    const authSlot = document.createElement('div');
+    authSlot.id = 'auth-nav-slot';
+    navEl.parentElement.insertBefore(authSlot, navEl.nextSibling);
+
     const mobileLinks = document.getElementById('mobile-nav');
     mobileLinks.innerHTML = `
       <a class="mobile-nav-link" data-route="/">Home</a>
@@ -78,7 +83,6 @@ const App = {
       <a class="mobile-nav-link" data-route="/news">News</a>
       <a class="mobile-nav-link" data-route="/tournaments">Tournaments</a>
       <a class="mobile-nav-link" data-route="/about">About</a>
-      <a class="mobile-nav-link" href="admin.html">⚙ Admin Panel</a>
     `;
   },
   buildFooter() {

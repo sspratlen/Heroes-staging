@@ -15,13 +15,19 @@
   <div class="login-card">
     <img class="login-logo" src="assets/img/heroes-logo.jpg" alt="Heroes Logo" onerror="this.style.background='#C8102E'">
     <div class="login-title">Heroes Admin</div>
-    <div class="login-subtitle">Enter your password to access the admin panel</div>
+    <div class="login-subtitle">Sign in with your Heroes account</div>
+    <div class="form-group" style="text-align:left;margin-bottom:14px">
+      <label class="form-label">Email</label>
+      <input type="email" class="form-input" id="login-email" placeholder="your@email.com" autocomplete="email"
+        onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+    </div>
     <div class="form-group" style="text-align:left;margin-bottom:20px">
       <label class="form-label">Password</label>
-      <input type="password" class="form-input" id="login-password" placeholder="Enter admin password" onkeydown="if(event.key==='Enter')doLogin()">
+      <input type="password" class="form-input" id="login-password" placeholder="Your password" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="doLogin()">Sign In</button>
-    <div id="login-error" style="color:#dc2626;font-size:13px;margin-top:12px;display:none">Incorrect password</div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center" id="login-btn" onclick="doLogin()">Sign In</button>
+    <div id="login-error" style="color:#dc2626;font-size:13px;margin-top:12px;min-height:18px"></div>
     <a href="index.html" style="display:block;margin-top:20px;font-size:13px;color:#888">← Back to Website</a>
   </div>
 </div>
@@ -135,29 +141,76 @@
 'use strict';
 
 // ─── AUTH ─────────────────────────────────────────────────
-function doLogin() {
-  const pw = document.getElementById('login-password').value;
-  const data = loadData();
-  if (pw === data.config.adminPassword) {
-    sessionStorage.setItem('heroes_admin', '1');
-    document.getElementById('admin-login').style.display = 'none';
-    document.getElementById('admin-layout').style.display = 'flex';
-    showPage('dashboard');
-  } else {
-    document.getElementById('login-error').style.display = 'block';
+const ADMIN_ROLES = ['admin', 'manager', 'coach'];
+
+async function doLogin() {
+  const email    = (document.getElementById('login-email')?.value || '').trim();
+  const password = document.getElementById('login-password')?.value || '';
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+
+  errEl.textContent = '';
+  if (!email || !password) { errEl.textContent = 'Email and password are required.'; return; }
+
+  btn.textContent = 'Signing in…';
+  btn.disabled = true;
+
+  try {
+    const sb = _getClient();
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) throw new Error('Invalid email or password.');
+
+    const { data: profile, error: profErr } = await sb
+      .from('profiles').select('*').eq('id', data.session.user.id).single();
+
+    if (profErr || !profile) throw new Error('Account not found. Please contact an admin.');
+    if (!ADMIN_ROLES.includes(profile.role)) throw new Error('You don\'t have permission to access the admin panel.');
+    if (!profile.approved) throw new Error('Your account is pending approval.');
+
+    showAdminLayout(profile);
+  } catch (err) {
+    errEl.textContent = err.message;
+    btn.textContent = 'Sign In';
+    btn.disabled = false;
     document.getElementById('login-password').value = '';
   }
 }
-function doLogout() {
-  sessionStorage.removeItem('heroes_admin');
+
+function showAdminLayout(profile) {
+  document.getElementById('admin-login').style.display = 'none';
+  document.getElementById('admin-layout').style.display = 'flex';
+  // Show current user in sidebar footer if element exists
+  const userEl = document.getElementById('admin-current-user');
+  if (userEl) userEl.textContent = profile.display_name || profile.email;
+  showPage('dashboard');
+}
+
+async function doLogout() {
+  const sb = _getClient();
+  if (sb) await sb.auth.signOut();
   document.getElementById('admin-login').style.display = 'flex';
   document.getElementById('admin-layout').style.display = 'none';
 }
-// Check if already logged in
-if (sessionStorage.getItem('heroes_admin') === '1') {
-  document.getElementById('admin-login').style.display = 'none';
-  document.getElementById('admin-layout').style.display = 'flex';
-}
+
+// ── Check session on page load ──────────────────────────────
+(async function checkSession() {
+  try {
+    const sb = _getClient();
+    if (!sb) return;
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) return;
+    const { data: profile } = await sb
+      .from('profiles').select('*').eq('id', session.user.id).single();
+    if (profile && ADMIN_ROLES.includes(profile.role) && profile.approved) {
+      showAdminLayout(profile);
+    } else if (session) {
+      // Has a session but no admin rights — sign out silently
+      await sb.auth.signOut();
+    }
+  } catch (err) {
+    console.warn('Session check failed:', err.message);
+  }
+})();
 
 // ─── MODAL ────────────────────────────────────────────────
 let modalSaveCallback = null;
