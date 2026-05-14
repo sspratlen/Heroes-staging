@@ -62,7 +62,7 @@ const App = {
       </li>
       <li class="nav-item"><a class="nav-link" data-route="/players">Players</a></li>
       <li class="nav-item"><a class="nav-link" data-route="/stats">Stats</a></li>
-      <li class="nav-item"><a class="nav-link" data-route="/schedule">Schedule</a></li>
+      <li class="nav-item"><a class="nav-link" data-route="/schedule">Games</a></li>
       <li class="nav-item"><a class="nav-link" data-route="/news">News</a></li>
       <li class="nav-item"><a class="nav-link" data-route="/tournaments">Tournaments</a></li>
       <li class="nav-item"><a class="nav-link" data-route="/about">About</a></li>
@@ -74,7 +74,7 @@ const App = {
       ${data.teams.map(t => `<a class="mobile-nav-link" data-route="/team/${t.id}">${t.name}</a>`).join('')}
       <a class="mobile-nav-link" data-route="/players">Players</a>
       <a class="mobile-nav-link" data-route="/stats">Stats</a>
-      <a class="mobile-nav-link" data-route="/schedule">Schedule</a>
+      <a class="mobile-nav-link" data-route="/schedule">Games</a>
       <a class="mobile-nav-link" data-route="/news">News</a>
       <a class="mobile-nav-link" data-route="/tournaments">Tournaments</a>
       <a class="mobile-nav-link" data-route="/about">About</a>
@@ -106,7 +106,7 @@ const App = {
           <h4>Quick Links</h4>
           <div class="footer-links">
             <a class="footer-link" data-route="/stats">Stats & Leaderboards</a>
-            <a class="footer-link" data-route="/schedule">Schedule</a>
+            <a class="footer-link" data-route="/schedule">Games</a>
             <a class="footer-link" data-route="/players">Player Directory</a>
             <a class="footer-link" data-route="/tournaments">Tournaments</a>
             <a class="footer-link" data-route="/news">News</a>
