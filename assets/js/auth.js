@@ -64,6 +64,11 @@ const HeroesAuth = {
     // Keep state in sync across tabs / token refreshes
     sb.auth.onAuthStateChange(async (event, session) => {
       this._session = session;
+      if (event === 'PASSWORD_RECOVERY') {
+        this.showLoginModal();
+        this._renderSetPasswordForm();
+        return;
+      }
       if (session?.user) {
         await this._loadProfile(session.user.id);
       } else {
@@ -152,6 +157,31 @@ const HeroesAuth = {
     if (!sb) return { error: { message: 'Authentication service unavailable.' } };
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     return error ? { error } : { data };
+  },
+
+  /**
+   * resetPassword(email)
+   * Sends a Supabase password-reset email. The link redirects back to
+   * the current page so the PASSWORD_RECOVERY handler can take over.
+   */
+  async resetPassword(email) {
+    const sb = _getClient();
+    if (!sb) return { error: { message: 'Authentication service unavailable.' } };
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+    return error ? { error } : { success: true };
+  },
+
+  /**
+   * updatePassword(newPassword)
+   * Called after the user clicks the reset link and lands back on the
+   * site with an active PASSWORD_RECOVERY session.
+   */
+  async updatePassword(newPassword) {
+    const sb = _getClient();
+    if (!sb) return { error: { message: 'Authentication service unavailable.' } };
+    const { error } = await sb.auth.updateUser({ password: newPassword });
+    return error ? { error } : { success: true };
   },
 
   /**
@@ -323,6 +353,10 @@ const HeroesAuth = {
       <button class="auth-secondary-btn" onclick="HeroesAuth.hideLoginModal()">Cancel</button>
 
       <div class="auth-modal-footer">
+        <a onclick="HeroesAuth._renderForgotForm()" class="auth-switch-link">
+          Forgot password?
+        </a>
+        &nbsp;·&nbsp;
         New to Heroes?
         <a onclick="HeroesAuth._renderRegisterForm()" class="auth-switch-link">
           Create an account →
@@ -386,6 +420,69 @@ const HeroesAuth = {
         <a onclick="HeroesAuth._renderLoginForm()" class="auth-switch-link">Sign in →</a>
       </div>`;
     setTimeout(() => document.getElementById('ha-reg-name')?.focus(), 80);
+  },
+
+  _renderForgotForm() {
+    const inner = document.getElementById('auth-modal-inner');
+    if (!inner) return;
+    inner.innerHTML = `
+      <div class="auth-modal-header">
+        <img src="assets/img/heroes-logo.jpg" alt="Heroes Logo"
+             onerror="this.style.background='#C8102E';this.style.borderRadius='50%'">
+        <div>
+          <div class="auth-modal-title">Reset Password</div>
+          <div class="auth-modal-subtitle">We'll email you a reset link</div>
+        </div>
+      </div>
+
+      <div class="auth-form-group">
+        <label class="auth-form-label" for="ha-forgot-email">Email</label>
+        <input type="email" id="ha-forgot-email" class="auth-form-input"
+               placeholder="you@example.com" autocomplete="email"
+               onkeydown="if(event.key==='Enter')HeroesAuth.submitForgot()">
+      </div>
+
+      <div id="ha-error" class="auth-form-error" aria-live="polite"></div>
+
+      <button class="auth-submit-btn" onclick="HeroesAuth.submitForgot()">Send Reset Link</button>
+
+      <div class="auth-modal-footer">
+        <a onclick="HeroesAuth._renderLoginForm()" class="auth-switch-link">← Back to sign in</a>
+      </div>`;
+    setTimeout(() => document.getElementById('ha-forgot-email')?.focus(), 80);
+  },
+
+  _renderSetPasswordForm() {
+    const inner = document.getElementById('auth-modal-inner');
+    if (!inner) return;
+    inner.innerHTML = `
+      <div class="auth-modal-header">
+        <img src="assets/img/heroes-logo.jpg" alt="Heroes Logo"
+             onerror="this.style.background='#C8102E';this.style.borderRadius='50%'">
+        <div>
+          <div class="auth-modal-title">Set New Password</div>
+          <div class="auth-modal-subtitle">Choose a new password for your account</div>
+        </div>
+      </div>
+
+      <div class="auth-form-group">
+        <label class="auth-form-label" for="ha-new-pw">New Password</label>
+        <input type="password" id="ha-new-pw" class="auth-form-input"
+               placeholder="Min 6 characters" autocomplete="new-password"
+               onkeydown="if(event.key==='Enter')document.getElementById('ha-new-pw2').focus()">
+      </div>
+
+      <div class="auth-form-group">
+        <label class="auth-form-label" for="ha-new-pw2">Confirm Password</label>
+        <input type="password" id="ha-new-pw2" class="auth-form-input"
+               placeholder="Repeat password" autocomplete="new-password"
+               onkeydown="if(event.key==='Enter')HeroesAuth.submitSetPassword()">
+      </div>
+
+      <div id="ha-error" class="auth-form-error" aria-live="polite"></div>
+
+      <button class="auth-submit-btn" onclick="HeroesAuth.submitSetPassword()">Update Password</button>`;
+    setTimeout(() => document.getElementById('ha-new-pw')?.focus(), 80);
   },
 
 
@@ -512,6 +609,88 @@ const HeroesAuth = {
             admin reviews your request.
           </p>
           <button class="auth-submit-btn" onclick="HeroesAuth.hideLoginModal()">Got it</button>
+        </div>`;
+    }
+  },
+
+  async submitForgot() {
+    const emailEl = document.getElementById('ha-forgot-email');
+    const errEl   = document.getElementById('ha-error');
+    if (!emailEl || !errEl) return;
+
+    const email = emailEl.value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errEl.textContent = 'Please enter a valid email address.'; return;
+    }
+
+    const btn = document.querySelector('#auth-modal-inner .auth-submit-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    errEl.textContent = '';
+
+    const { error } = await this.resetPassword(email);
+
+    if (btn) { btn.disabled = false; btn.textContent = 'Send Reset Link'; }
+
+    if (error) {
+      errEl.textContent = error.message || 'Could not send reset email. Please try again.';
+      return;
+    }
+
+    const inner = document.getElementById('auth-modal-inner');
+    if (inner) {
+      inner.innerHTML = `
+        <div class="auth-approval-state">
+          <div class="auth-approval-icon">📧</div>
+          <h2 class="auth-approval-title">Check Your Email</h2>
+          <p class="auth-approval-msg">
+            A password reset link has been sent to <strong>${email}</strong>.
+            Click the link in the email to set a new password.
+          </p>
+          <button class="auth-submit-btn" onclick="HeroesAuth.hideLoginModal()">Got it</button>
+          <div class="auth-modal-footer" style="margin-top:12px">
+            <a onclick="HeroesAuth._renderLoginForm()" class="auth-switch-link">← Back to sign in</a>
+          </div>
+        </div>`;
+    }
+  },
+
+  async submitSetPassword() {
+    const pwEl  = document.getElementById('ha-new-pw');
+    const pw2El = document.getElementById('ha-new-pw2');
+    const errEl = document.getElementById('ha-error');
+    if (!pwEl || !pw2El || !errEl) return;
+
+    const password = pwEl.value;
+    const confirm  = pw2El.value;
+
+    if (!password || password.length < 6) {
+      errEl.textContent = 'Password must be at least 6 characters.'; return;
+    }
+    if (password !== confirm) {
+      errEl.textContent = 'Passwords do not match.'; return;
+    }
+
+    const btn = document.querySelector('#auth-modal-inner .auth-submit-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Updating…'; }
+    errEl.textContent = '';
+
+    const { error } = await this.updatePassword(password);
+
+    if (btn) { btn.disabled = false; btn.textContent = 'Update Password'; }
+
+    if (error) {
+      errEl.textContent = error.message || 'Could not update password. Please try again.';
+      return;
+    }
+
+    const inner = document.getElementById('auth-modal-inner');
+    if (inner) {
+      inner.innerHTML = `
+        <div class="auth-approval-state">
+          <div class="auth-approval-icon">✅</div>
+          <h2 class="auth-approval-title">Password Updated!</h2>
+          <p class="auth-approval-msg">Your password has been changed successfully.</p>
+          <button class="auth-submit-btn" onclick="HeroesAuth.hideLoginModal()">Done</button>
         </div>`;
     }
   },
