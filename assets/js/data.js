@@ -108,18 +108,56 @@ const HeroesData = {
     { id:"g19", teamId:"50s-aaa", date:"2025-06-06", opponent:"MN 50 Core",              location:"Northern Region", heroScore:19, oppScore:18, result:"W", season:"2025", tournamentId:"e4", notes:"TOC Northern Championships", playerStats:[] },
     // ══ 2025 — 50's AA — TOC Northern Championships (Jun 6-7) ══
     { id:"g20", teamId:"50s-aa",  date:"2025-06-06", opponent:"Oshkosh Ambassadors (WI)",location:"Northern Region", heroScore:18, oppScore:16, result:"W", season:"2025", tournamentId:"e4", notes:"TOC Northern Championships — qualified for TOC National", playerStats:[] },
-    // ══ 2026 — 55's AAA — TOC National, Lakeland FL (Jan 2026) — Runner-Up ══
-    { id:"g21", teamId:"55s-aaa", date:"2026-01-14", opponent:"Pro Vision",              location:"Lakeland, FL",    heroScore:22, oppScore:19, result:"W", season:"2026", tournamentId:"e7", notes:"TOC National — Semifinal (triple play game)", playerStats:[] },
-    { id:"g22", teamId:"55s-aaa", date:"2026-01-15", opponent:"National Champion",       location:"Lakeland, FL",    heroScore:18, oppScore:21, result:"L", season:"2026", tournamentId:"e7", notes:"TOC National — Championship (Runner-Up)", playerStats:[] },
-    // ══ 2026 — 50's AA — TOC National, Lakeland FL (Jan 2026) — Runner-Up ══
-    { id:"g23", teamId:"50s-aa",  date:"2026-01-14", opponent:"Top AA Team",             location:"Lakeland, FL",    heroScore:31, oppScore:18, result:"W", season:"2026", tournamentId:"e7", notes:"TOC National — Pool play (.650+ team avg)", playerStats:[] },
-    { id:"g24", teamId:"50s-aa",  date:"2026-01-15", opponent:"National Champion",       location:"Lakeland, FL",    heroScore:24, oppScore:27, result:"L", season:"2026", tournamentId:"e7", notes:"TOC National — Championship (Runner-Up)", playerStats:[] },
-    // ══ 2026 — 55's AAA — Memorial Weekend Tournament (May 1-3) ══
-    { id:"g25", teamId:"55s-aaa", date:"2026-05-01", opponent:"Alliance (CO)",           location:"Omaha, NE",       heroScore:0,  oppScore:0,  result:"T", season:"2026", tournamentId:"e9", notes:"Scores pending entry", playerStats:[] },
-    { id:"g26", teamId:"55s-aaa", date:"2026-05-02", opponent:"Johnny\'s Softball",    location:"Omaha, NE",       heroScore:0,  oppScore:0,  result:"T", season:"2026", tournamentId:"e9", notes:"Scores pending entry", playerStats:[] },
-    { id:"g27", teamId:"55s-aaa", date:"2026-05-02", opponent:"Alliance (CO)",           location:"Omaha, NE",       heroScore:0,  oppScore:0,  result:"T", season:"2026", tournamentId:"e9", notes:"Scores pending entry", playerStats:[] },
-    { id:"g28", teamId:"55s-aaa", date:"2026-05-03", opponent:"Mile High (CO)",          location:"Omaha, NE",       heroScore:0,  oppScore:0,  result:"T", season:"2026", tournamentId:"e9", notes:"Scores pending entry", playerStats:[] },
-    { id:"g29", teamId:"55s-aaa", date:"2026-05-03", opponent:"Alliance (CO)",           location:"Omaha, NE",       heroScore:0,  oppScore:0,  result:"T", season:"2026", tournamentId:"e9", notes:"Scores pending entry", playerStats:[] },
+    // ══ 2026 — 55's AAA — TOC Florida, Lakeland FL (Jan 23-25) ══
+    { id:"g21", teamId:"55s-aaa", date:"2026-01-23", opponent:"Pro Vision (WA)",              location:"Lakeland, FL", heroScore:25, oppScore:18, result:"W", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g22", teamId:"55s-aaa", date:"2026-01-23", opponent:"Invaders/Window Source (RI)",  location:"Lakeland, FL", heroScore:14, oppScore:20, result:"L", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g23", teamId:"55s-aaa", date:"2026-01-24", opponent:"Provision 55's",               location:"Lakeland, FL", heroScore:21, oppScore:22, result:"L", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g24", teamId:"55s-aaa", date:"2026-01-24", opponent:"Vancouver Connection (WA)",    location:"Lakeland, FL", heroScore:23, oppScore:14, result:"W", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g25", teamId:"55s-aaa", date:"2026-01-25", opponent:"Invaders (RI)",                location:"Lakeland, FL", heroScore:21, oppScore:19, result:"W", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g26", teamId:"55s-aaa", date:"2026-01-25", opponent:"Alliance (CO)",                location:"Lakeland, FL", heroScore:25, oppScore:24, result:"W", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play (OT)", playerStats:[] },
+    { id:"g27", teamId:"55s-aaa", date:"2026-01-25", opponent:"Provision (WA)",               location:"Lakeland, FL", heroScore:20, oppScore:13, result:"W", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g28", teamId:"55s-aaa", date:"2026-01-25", opponent:"Paly (TX)",                    location:"Lakeland, FL", heroScore:19, oppScore:20, result:"L", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    // ══ 2026 — 50's AA — TOC Florida, Lakeland FL (Jan 23-25) ══
+    { id:"g29", teamId:"50s-aa",  date:"2026-01-23", opponent:"Detroit Pride (MI)",           location:"Lakeland, FL", heroScore:17, oppScore:7,  result:"W", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g30", teamId:"50s-aa",  date:"2026-01-23", opponent:"Markham Canadians (ON)",       location:"Lakeland, FL", heroScore:17, oppScore:9,  result:"W", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g31", teamId:"50s-aa",  date:"2026-01-24", opponent:"Longshoremen 55 (VA)",         location:"Lakeland, FL", heroScore:26, oppScore:33, result:"L", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g32", teamId:"50s-aa",  date:"2026-01-24", opponent:"Nor-Cal Hitmen (CA)",          location:"Lakeland, FL", heroScore:28, oppScore:27, result:"W", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g33", teamId:"50s-aa",  date:"2026-01-24", opponent:"Markham Canadians (ON)",       location:"Lakeland, FL", heroScore:6,  oppScore:13, result:"L", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g34", teamId:"50s-aa",  date:"2026-01-25", opponent:"Nor-Cal Hitmen (CA)",          location:"Lakeland, FL", heroScore:27, oppScore:23, result:"W", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play", playerStats:[] },
+    { id:"g35", teamId:"50s-aa",  date:"2026-01-25", opponent:"Markham Canadians (ON)",       location:"Lakeland, FL", heroScore:19, oppScore:20, result:"L", season:"2026", tournamentId:"e7", notes:"TOC Florida — pool play (Runner-Up finish)", playerStats:[] },
+    // ══ 2026 — 50's AAA — TOC Kansas City (Mar 20-22) ══
+    { id:"g36", teamId:"50s-aaa", date:"2026-03-20", opponent:"Alliance/Scrap Iron 50 (CO)",  location:"Kansas City, MO", heroScore:13, oppScore:12, result:"W", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — pool play", playerStats:[] },
+    { id:"g37", teamId:"50s-aaa", date:"2026-03-20", opponent:"Alliance (CO)",                location:"Kansas City, MO", heroScore:16, oppScore:20, result:"L", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — pool play", playerStats:[] },
+    { id:"g38", teamId:"50s-aaa", date:"2026-03-20", opponent:"Heroes NE 50's AA",            location:"Kansas City, MO", heroScore:18, oppScore:2,  result:"W", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — cross-bracket vs own AA squad", playerStats:[] },
+    { id:"g39", teamId:"50s-aaa", date:"2026-03-20", opponent:"Alliance/Scrap Iron 50 (CO)",  location:"Kansas City, MO", heroScore:24, oppScore:23, result:"W", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — pool play", playerStats:[] },
+    { id:"g40", teamId:"50s-aaa", date:"2026-03-21", opponent:"Alliance/Scrap Iron 50 (CO)",  location:"Kansas City, MO", heroScore:21, oppScore:22, result:"L", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — bracket play", playerStats:[] },
+    { id:"g41", teamId:"50s-aaa", date:"2026-03-21", opponent:"KC Kids 50's (MO)",            location:"Kansas City, MO", heroScore:18, oppScore:2,  result:"W", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — bracket play", playerStats:[] },
+    { id:"g42", teamId:"50s-aaa", date:"2026-03-21", opponent:"KC Kids 50s (MO)",             location:"Kansas City, MO", heroScore:13, oppScore:7,  result:"W", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — bracket play", playerStats:[] },
+    { id:"g43", teamId:"50s-aaa", date:"2026-03-21", opponent:"Heroes NE 50's",               location:"Kansas City, MO", heroScore:16, oppScore:14, result:"W", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — bracket play", playerStats:[] },
+    { id:"g44", teamId:"50s-aaa", date:"2026-03-21", opponent:"Alliance (CO)",                location:"Kansas City, MO", heroScore:21, oppScore:15, result:"W", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — bracket play", playerStats:[] },
+    { id:"g45", teamId:"50s-aaa", date:"2026-03-22", opponent:"Alliance 50 AAA",              location:"Kansas City, MO", heroScore:21, oppScore:22, result:"L", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — championship bracket", playerStats:[] },
+    // ══ 2026 — 50's AA — TOC Kansas City (Mar 20-22) ══
+    { id:"g46", teamId:"50s-aa",  date:"2026-03-20", opponent:"Heroes 50's AAA",              location:"Kansas City, MO", heroScore:2,  oppScore:18, result:"L", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — cross-bracket vs own AAA squad", playerStats:[] },
+    { id:"g47", teamId:"50s-aa",  date:"2026-03-20", opponent:"KC Kids 50's AAA",             location:"Kansas City, MO", heroScore:16, oppScore:19, result:"L", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — pool play", playerStats:[] },
+    { id:"g48", teamId:"50s-aa",  date:"2026-03-20", opponent:"KC Vintage (MO)",              location:"Kansas City, MO", heroScore:20, oppScore:21, result:"L", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — pool play", playerStats:[] },
+    { id:"g49", teamId:"50s-aa",  date:"2026-03-21", opponent:"Swagger (MO)",                 location:"Kansas City, MO", heroScore:27, oppScore:19, result:"W", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — bracket play", playerStats:[] },
+    { id:"g50", teamId:"50s-aa",  date:"2026-03-21", opponent:"Swagger (MO)",                 location:"Kansas City, MO", heroScore:6,  oppScore:7,  result:"L", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — bracket play", playerStats:[] },
+    { id:"g51", teamId:"50s-aa",  date:"2026-03-21", opponent:"Heroes 50's AAA",              location:"Kansas City, MO", heroScore:16, oppScore:14, result:"W", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — bracket play", playerStats:[] },
+    { id:"g52", teamId:"50s-aa",  date:"2026-03-22", opponent:"Swagger (MO)",                 location:"Kansas City, MO", heroScore:23, oppScore:25, result:"L", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — bracket play", playerStats:[] },
+    { id:"g53", teamId:"50s-aa",  date:"2026-03-22", opponent:"Alliance/Scrap Iron 50 (CO)",  location:"Kansas City, MO", heroScore:24, oppScore:25, result:"L", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — bracket play", playerStats:[] },
+    { id:"g54", teamId:"50s-aa",  date:"2026-03-22", opponent:"Heroes 50's AAA",              location:"Kansas City, MO", heroScore:13, oppScore:21, result:"L", season:"2026", tournamentId:"e10", notes:"TOC Kansas City — bracket play", playerStats:[] },
+    // ══ 2026 — 50's AA — Wes Weddle Tournament (Apr 25-26) ══
+    { id:"g55", teamId:"50s-aa",  date:"2026-04-25", opponent:"ABC 50's",                     location:"Kansas City, MO", heroScore:21, oppScore:15, result:"W", season:"2026", tournamentId:"e11", notes:"Wes Weddle Tournament", playerStats:[] },
+    { id:"g56", teamId:"50s-aa",  date:"2026-04-25", opponent:"KC Kids 50's",                 location:"Kansas City, MO", heroScore:26, oppScore:13, result:"W", season:"2026", tournamentId:"e11", notes:"Wes Weddle Tournament", playerStats:[] },
+    { id:"g57", teamId:"50s-aa",  date:"2026-04-25", opponent:"KC Kids 50s (MO)",             location:"Kansas City, MO", heroScore:19, oppScore:12, result:"W", season:"2026", tournamentId:"e11", notes:"Wes Weddle Tournament", playerStats:[] },
+    { id:"g58", teamId:"50s-aa",  date:"2026-04-26", opponent:"Iowa Demons",                  location:"Kansas City, MO", heroScore:13, oppScore:10, result:"W", season:"2026", tournamentId:"e11", notes:"Wes Weddle Tournament", playerStats:[] },
+    { id:"g59", teamId:"50s-aa",  date:"2026-04-26", opponent:"Iowa Demons",                  location:"Kansas City, MO", heroScore:23, oppScore:12, result:"W", season:"2026", tournamentId:"e11", notes:"Wes Weddle Tournament — bracket play", playerStats:[] },
+    // ══ 2026 — 55's AAA — Texas State Championships / TOC (May 1-3, Dallas TX) ══
+    { id:"g60", teamId:"55s-aaa", date:"2026-05-01", opponent:"Duke City Empire (NM)",        location:"Dallas, TX",   heroScore:0,  oppScore:0,  result:"T", season:"2026", tournamentId:"e9", notes:"Texas State Championships — scores pending", playerStats:[] },
+    { id:"g61", teamId:"55s-aaa", date:"2026-05-01", opponent:"Scrap Iron Mile High (CO)",    location:"Dallas, TX",   heroScore:0,  oppScore:0,  result:"T", season:"2026", tournamentId:"e9", notes:"Texas State Championships — scores pending", playerStats:[] },
+    { id:"g62", teamId:"55s-aaa", date:"2026-05-02", opponent:"Johnny Softball 55's (TX)",    location:"Dallas, TX",   heroScore:0,  oppScore:0,  result:"T", season:"2026", tournamentId:"e9", notes:"Texas State Championships — scores pending", playerStats:[] },
+    { id:"g63", teamId:"55s-aaa", date:"2026-05-02", opponent:"Alliance/Scrap Iron 55 (CO)", location:"Dallas, TX",   heroScore:0,  oppScore:0,  result:"T", season:"2026", tournamentId:"e9", notes:"Texas State Championships — scores pending", playerStats:[] },
+    { id:"g64", teamId:"55s-aaa", date:"2026-05-03", opponent:"Maher Muehling NE Elite",     location:"Dallas, TX",   heroScore:0,  oppScore:0,  result:"T", season:"2026", tournamentId:"e9", notes:"Texas State Championships — scores pending", playerStats:[] },
   ],
 
   // ─── EVENTS / TOURNAMENTS ────────────────────────────────
@@ -177,7 +215,7 @@ const HeroesData = {
     },
     // ── 2026 Season ───────────────────────────────────────────
     {
-      id:"e7", type:"tournament", name:"Tournament of Champions — National", date:"2026-01-14", endDate:"2026-01-18",
+      id:"e7", type:"tournament", name:"Tournament of Champions — National (TOC Florida)", date:"2026-01-23", endDate:"2026-01-25",
       location:"Lakeland, FL", venue:"", address:"Lakeland, FL",
       teams:["55s-aaa","50s-aa"], division:"55+ AAA / 50+ AA", entryFee:0,
       rosterDeadline:"", rsvpDeadline:"", director:"SSUSA", directorPhone:"",
@@ -197,13 +235,33 @@ const HeroesData = {
       availability:[]
     },
     {
-      id:"e9", type:"tournament", name:"2026 Memorial Weekend Tournament", date:"2026-05-01", endDate:"2026-05-03",
-      location:"Omaha, NE", venue:"Seymour Smith Park", address:"7300 Seymour Smith Blvd, Omaha NE 68157",
+      id:"e9", type:"tournament", name:"SSUSA Texas State Championships 2026 (TOC)", date:"2026-05-01", endDate:"2026-05-03",
+      location:"Dallas, TX", venue:"Kiest Park Softball Complex", address:"3080 S. Hampton Rd., Dallas, TX 75524",
       teams:["55s-aaa"], division:"55+ AAA", entryFee:0,
-      rosterDeadline:"", rsvpDeadline:"", director:"", directorPhone:"",
-      notes:"In progress — scores pending entry.",
+      rosterDeadline:"", rsvpDeadline:"", director:"SSUSA", directorPhone:"",
+      notes:"6-team round-robin. Heroes 55 (NE) vs Alliance/Scrap Iron 55 (CO), Duke City Empire (NM), Johnny Softball 55's (TX), Maher Muehling NE Elite, Scrap Iron Mile High (CO). Scores pending entry.",
       hotelInfo:"", hotelUrl:"", hotelCode:"",
-      registrationStatus:"open", status:"completed", placement:"",
+      registrationStatus:"closed", status:"completed", placement:"",
+      availability:[]
+    },
+    {
+      id:"e10", type:"tournament", name:"TOC Kansas City", date:"2026-03-20", endDate:"2026-03-22",
+      location:"Kansas City, MO", venue:"", address:"Kansas City, MO",
+      teams:["50s-aaa","50s-aa"], division:"50+ AAA / 50+ AA", entryFee:0,
+      rosterDeadline:"", rsvpDeadline:"", director:"SSUSA", directorPhone:"",
+      notes:"Both 50s teams competed at TOC Kansas City.",
+      hotelInfo:"", hotelUrl:"", hotelCode:"",
+      registrationStatus:"closed", status:"completed", placement:"",
+      availability:[]
+    },
+    {
+      id:"e11", type:"tournament", name:"Wes Weddle Tournament", date:"2026-04-25", endDate:"2026-04-26",
+      location:"Kansas City, MO", venue:"", address:"Kansas City, MO",
+      teams:["50s-aa"], division:"50+ AA", entryFee:0,
+      rosterDeadline:"", rsvpDeadline:"", director:"", directorPhone:"",
+      notes:"50s AA team went 5-0.",
+      hotelInfo:"", hotelUrl:"", hotelCode:"",
+      registrationStatus:"closed", status:"completed", placement:"",
       availability:[]
     },
   ],
