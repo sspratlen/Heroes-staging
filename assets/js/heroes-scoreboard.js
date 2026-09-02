@@ -460,6 +460,325 @@
   };
 
 
+  // ── GroupMe state ─────────────────────────────────────────────
+  let _gmPollTimer = null;
+  let _gmCurrentGroupId = null;
+  let _gmLastMessageId = null;
+
+  // ── GroupMe helpers ───────────────────────────────────────────
+  const GM_API = 'https://api.groupme.com/v3';
+
+  function _escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  const _GM_COLORS = ['#C8102E','#1C6EA4','#16803A','#C2410C','#0F766E','#7C3AED','#B45309','#0369A1'];
+  function _gmColor(id) {
+    let h = 0;
+    const s = String(id || '');
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0xffffffff;
+    return _GM_COLORS[Math.abs(h) % _GM_COLORS.length];
+  }
+
+  async function gmFetch(path, token) {
+    const sep = path.includes('?') ? '&' : '?';
+    const res = await fetch(`${GM_API}${path}${sep}token=${encodeURIComponent(token)}`);
+    if (res.status === 401) return { _unauthorized: true };
+    if (!res.ok) return { _error: res.status };
+    const json = await res.json();
+    return json.response || json;
+  }
+
+  async function gmPost(path, token, body) {
+    const res = await fetch(`${GM_API}${path}?token=${encodeURIComponent(token)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401) return { _unauthorized: true };
+    if (!res.ok) return { _error: res.status };
+    const json = await res.json();
+    return json.response || json;
+  }
+
+  function getGroupMeToken() {
+    return getHA()?.getProfile()?.groupme_token || '';
+  }
+
+  async function saveGroupMeToken(token) {
+    const sb = _getClient();
+    const profile = getHA()?.getProfile();
+    if (!sb || !profile) return;
+    await sb.from('profiles').update({ groupme_token: token }).eq('id', profile.id);
+    profile.groupme_token = token;
+  }
+
+  async function clearGroupMeToken() {
+    await saveGroupMeToken('');
+  }
+
+  // ── OAuth popup ───────────────────────────────────────────────
+  window.connectGroupMe = function () {
+    const clientId = (typeof GROUPME_CLIENT_ID !== 'undefined') ? GROUPME_CLIENT_ID : '';
+    if (!clientId || clientId === 'YOUR_GROUPME_CLIENT_ID') {
+      const errEl = document.getElementById('gm-connect-err');
+      if (errEl) errEl.textContent = 'GroupMe Client ID not configured yet.';
+      return;
+    }
+    const callbackUrl = window.location.origin + '/groupme-callback.html';
+    const authUrl = `https://oauth.groupme.com/oauth/authorize?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(callbackUrl)}`;
+    const popup = window.open(authUrl, 'gm_oauth', 'width=480,height=620,left=200,top=100');
+
+    if (!popup || popup.closed) {
+      const errEl = document.getElementById('gm-connect-err');
+      if (errEl) errEl.textContent = 'Allow popups for this site to connect GroupMe.';
+      return;
+    }
+
+    function onMsg(e) {
+      if (e.origin !== window.location.origin) return;
+      if (!e.data?.groupmeToken) return;
+      window.removeEventListener('message', onMsg);
+      clearInterval(closedCheck);
+      saveGroupMeToken(e.data.groupmeToken).then(() => renderChatTab());
+    }
+    window.addEventListener('message', onMsg);
+
+    const closedCheck = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(closedCheck);
+        window.removeEventListener('message', onMsg);
+        const errEl = document.getElementById('gm-connect-err');
+        if (errEl && !errEl.textContent) errEl.textContent = 'Connection cancelled.';
+      }
+    }, 500);
+  };
+
+  // ── Tab switching ─────────────────────────────────────────────
+  window.switchMyTab = function (tab) {
+    if (tab !== 'chat' && _gmPollTimer) {
+      clearInterval(_gmPollTimer);
+      _gmPollTimer = null;
+      _gmCurrentGroupId = null;
+    }
+    document.querySelectorAll('.mh-tab[id^="mh-tab-"]').forEach(b => b.classList.remove('mh-tab-on'));
+    document.getElementById('mh-tab-' + tab)?.classList.add('mh-tab-on');
+    ['avail', 'chat'].forEach(p => {
+      const el = document.getElementById('mh-panel-' + p);
+      if (el) el.hidden = (p !== tab);
+    });
+    if (tab === 'chat') renderChatTab();
+  };
+
+  // ── Chat message helpers ──────────────────────────────────────
+  function gmRenderMsg(m) {
+    const name    = _escHtml(m.name || 'Unknown');
+    const text    = _escHtml(m.text || '');
+    const initial = (m.name || '?')[0].toUpperCase();
+    const color   = _gmColor(m.user_id || m.sender_id || '');
+    const time    = m.created_at
+      ? new Date(m.created_at * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      : '';
+    return `
+      <div class="gm-msg">
+        <div class="gm-msg-av" style="background:${color}">${initial}</div>
+        <div class="gm-msg-body">
+          <div class="gm-msg-meta">
+            <span class="gm-msg-name">${name}</span>
+            <span class="gm-msg-time">${time}</span>
+          </div>
+          <div class="gm-msg-text">${text}</div>
+        </div>
+      </div>`;
+  }
+
+  async function gmLoadMessages(groupId, token) {
+    const data   = await gmFetch(`/groups/${groupId}/messages?limit=20`, token);
+    const msgsEl = document.getElementById('gm-msgs');
+    if (!msgsEl) return;
+    if (data._unauthorized) { await clearGroupMeToken(); return; }
+    const msgs = data.messages || [];
+    if (msgs.length === 0) {
+      msgsEl.innerHTML = '<div style="text-align:center;padding:40px;color:#888;font-size:13px">No messages yet. Be the first to say something!</div>';
+      return;
+    }
+    _gmLastMessageId = msgs[0].id;
+    msgsEl.innerHTML = [...msgs].reverse().map(gmRenderMsg).join('');
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  async function gmPollMessages(groupId, token) {
+    if (!_gmLastMessageId) return;
+    let data;
+    try { data = await gmFetch(`/groups/${groupId}/messages?since_id=${_gmLastMessageId}`, token); }
+    catch (_) { return; }
+    if (data._unauthorized) { clearInterval(_gmPollTimer); await clearGroupMeToken(); return; }
+    const msgs = data.messages || [];
+    if (msgs.length === 0) return;
+    _gmLastMessageId = msgs[0].id;
+    const msgsEl = document.getElementById('gm-msgs');
+    if (!msgsEl) return;
+    const atBottom = msgsEl.scrollHeight - msgsEl.scrollTop <= msgsEl.clientHeight + 40;
+    [...msgs].reverse().forEach(m => { msgsEl.innerHTML += gmRenderMsg(m); });
+    if (atBottom) msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  window.openGroupMeGroup = async function (groupId, groupName) {
+    const token = getGroupMeToken();
+    if (!token) return;
+    if (_gmPollTimer) { clearInterval(_gmPollTimer); _gmPollTimer = null; }
+    _gmCurrentGroupId = groupId;
+    _gmLastMessageId  = null;
+
+    document.querySelectorAll('.gm-grp-row').forEach(r => r.classList.remove('gm-grp-sel'));
+    document.querySelector(`.gm-grp-row[data-gid="${groupId}"]`)?.classList.add('gm-grp-sel');
+
+    const threadPane = document.getElementById('gm-thread-pane');
+    if (!threadPane) return;
+
+    threadPane.innerHTML = `
+      <div class="gm-thread-head">
+        <button class="gm-back-btn" onclick="gmBackToGroups()">← Groups</button>
+        <div class="gm-thread-title">${_escHtml(groupName)}</div>
+      </div>
+      <div class="gm-msgs" id="gm-msgs"><div class="gm-loading"><div class="gm-spinner"></div></div></div>
+      <div class="gm-send-box">
+        <textarea class="gm-send-input" id="gm-send-input" placeholder="Send a message…" rows="1"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();gmSendMessage('${groupId}')}"></textarea>
+        <button class="gm-send-btn" onclick="gmSendMessage('${groupId}')">Send</button>
+      </div>`;
+
+    document.getElementById('gm-groups-pane')?.classList.add('gm-mobile-hidden');
+    threadPane.classList.add('gm-mobile-visible');
+
+    await gmLoadMessages(groupId, token);
+
+    _gmPollTimer = setInterval(async () => {
+      if (_gmCurrentGroupId !== groupId) return;
+      const t = getGroupMeToken();
+      if (t) await gmPollMessages(groupId, t);
+    }, 30000);
+  };
+
+  window.gmSendMessage = async function (groupId) {
+    const input = document.getElementById('gm-send-input');
+    const token = getGroupMeToken();
+    if (!input || !token) return;
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value    = '';
+    input.disabled = true;
+
+    const profile = getHA()?.getProfile();
+    const name    = profile?.display_name || 'Me';
+    const msgsEl  = document.getElementById('gm-msgs');
+    if (msgsEl) {
+      msgsEl.innerHTML += gmRenderMsg({ name, user_id: 'me', text, created_at: Math.floor(Date.now() / 1000) });
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    }
+
+    const guid   = Math.random().toString(36).slice(2) + Date.now();
+    const result = await gmPost(`/groups/${groupId}/messages`, token, {
+      message: { source_guid: guid, text },
+    });
+
+    input.disabled = false;
+    input.focus();
+
+    if (result._unauthorized) {
+      await clearGroupMeToken();
+    } else if (result._error) {
+      const errEl = document.createElement('div');
+      errEl.className   = 'gm-send-err';
+      errEl.textContent = "Couldn't send. Try again.";
+      input.parentElement?.insertBefore(errEl, input);
+      setTimeout(() => errEl.remove(), 3000);
+    }
+  };
+
+  window.gmBackToGroups = function () {
+    document.getElementById('gm-groups-pane')?.classList.remove('gm-mobile-hidden');
+    document.getElementById('gm-thread-pane')?.classList.remove('gm-mobile-visible');
+    if (_gmPollTimer) { clearInterval(_gmPollTimer); _gmPollTimer = null; }
+    _gmCurrentGroupId = null;
+  };
+
+  async function renderChatTab() {
+    const panel = document.getElementById('mh-panel-chat');
+    if (!panel) return;
+    if (_gmPollTimer) { clearInterval(_gmPollTimer); _gmPollTimer = null; }
+    _gmCurrentGroupId = null;
+    _gmLastMessageId  = null;
+
+    const token = getGroupMeToken();
+    if (!token) {
+      panel.innerHTML = `
+        <div class="gm-connect-wrap">
+          <div class="gm-connect-card">
+            <div class="gm-connect-icon">💬</div>
+            <h2 class="gm-connect-title">Connect GroupMe</h2>
+            <p class="gm-connect-sub">Link your GroupMe account to read and send messages from your groups right here.</p>
+            <button class="gm-connect-btn" onclick="connectGroupMe()">Connect GroupMe</button>
+            <div id="gm-connect-err" class="gm-connect-err"></div>
+          </div>
+        </div>`;
+      return;
+    }
+
+    panel.innerHTML = '<div class="gm-loading"><div class="gm-spinner"></div> Loading groups…</div>';
+
+    const groups = await gmFetch('/groups?per_page=50&order=recent', token);
+
+    if (groups._unauthorized) {
+      await clearGroupMeToken();
+      panel.innerHTML = `
+        <div class="gm-connect-wrap">
+          <div class="gm-connect-card">
+            <div class="gm-connect-icon">🔒</div>
+            <h2 class="gm-connect-title">Reconnect GroupMe</h2>
+            <p class="gm-connect-sub">Your GroupMe connection expired — reconnect below.</p>
+            <button class="gm-connect-btn" onclick="connectGroupMe()">Reconnect GroupMe</button>
+            <div id="gm-connect-err" class="gm-connect-err"></div>
+          </div>
+        </div>`;
+      return;
+    }
+
+    if (!Array.isArray(groups) || groups.length === 0) {
+      panel.innerHTML = '<div class="gm-empty">You don\'t appear to be in any GroupMe groups yet.</div>';
+      return;
+    }
+
+    panel.innerHTML = `
+      <div class="gm-panes">
+        <div class="gm-groups-pane" id="gm-groups-pane">
+          ${groups.map(g => `
+            <div class="gm-grp-row" data-gid="${g.id}"
+                onclick="openGroupMeGroup('${g.id}', ${JSON.stringify(_escHtml(g.name || ''))})">
+              <div class="gm-grp-av" style="background:${_gmColor(g.id)}">${(g.name || '?')[0].toUpperCase()}</div>
+              <div class="gm-grp-info">
+                <div class="gm-grp-name">${_escHtml(g.name || '')}</div>
+                <div class="gm-grp-meta">${(g.members || []).length} members</div>
+                ${g.messages?.preview?.preview
+                  ? `<div class="gm-grp-preview">${_escHtml((g.messages.preview.preview || '').substring(0, 60))}</div>`
+                  : ''}
+              </div>
+            </div>`).join('')}
+        </div>
+        <div class="gm-thread-pane" id="gm-thread-pane">
+          <div class="gm-thread-empty">
+            <div style="font-size:40px;margin-bottom:12px">💬</div>
+            <div style="font-size:14px;color:#888">Select a group to start chatting</div>
+          </div>
+        </div>
+      </div>`;
+  }
+
   // ── Main render ─────────────────────────────────────────────
 
   function renderMyHeroes() {
@@ -541,7 +860,7 @@
       .sort((a, b) =>
         (a.startDate || a.date || '').localeCompare(b.startDate || b.date || ''));
 
-    // Player identity for hero banner
+    // Player identity for hero banner (always shown for logged-in approved users)
     const fullName    = `${player.firstName||''} ${player.lastName||''}`.trim();
     const initials    = fullName.split(/\s+/).slice(0,2).map(w=>w[0]?.toUpperCase()||'').join('') || '?';
     const playerTeams = (player.teams||[]).map(tid=>data.teams.find(t=>t.id===tid)).filter(Boolean);
@@ -664,24 +983,30 @@
         <!-- TAB BAR -->
         <div class="mh-tabs">
           <div class="mh-tabs-in">
-            <button class="mh-tab mh-tab-on">AVAILABILITY</button>
+            <button class="mh-tab mh-tab-on" id="mh-tab-avail" onclick="switchMyTab('avail')">AVAILABILITY</button>
+            <button class="mh-tab" id="mh-tab-chat" onclick="switchMyTab('chat')">CHAT</button>
             <button class="mh-tab" data-route="/events">EVENTS</button>
             ${isStaff ? '<a href="admin.html" class="mh-adm-lnk">⚙ Admin Panel</a>' : ''}
           </div>
         </div>
 
-        <!-- EVENT CARDS -->
-        ${upcomingAll.length ? `
-        <div class="mh-ev-cards">
-          <p class="mh-ev-hint">Tap your availability for each event — saves instantly.</p>
-          ${evCards}
-        </div>` : `
-        <div style="text-align:center;padding:60px 20px;color:#888">
-          <div style="font-size:40px;margin-bottom:12px">📅</div>
-          <div style="font-size:15px;font-weight:700;color:#555;margin-bottom:6px">No Upcoming Events</div>
-          <div style="font-size:13px">No events are scheduled yet. Check back soon.</div>
-          ${isStaff ? '<div style="margin-top:20px"><a href="admin.html" style="display:inline-block;padding:10px 22px;background:#C8102E;color:#fff;border-radius:6px;font-size:13px;font-weight:800;text-decoration:none">⚙ Admin Panel</a></div>' : ''}
-        </div>`}
+        <!-- AVAILABILITY PANEL -->
+        <div id="mh-panel-avail">
+          ${upcomingAll.length ? `
+          <div class="mh-ev-cards">
+            <p class="mh-ev-hint">Tap your availability for each event — saves instantly.</p>
+            ${evCards}
+          </div>` : `
+          <div style="text-align:center;padding:60px 20px;color:#888">
+            <div style="font-size:40px;margin-bottom:12px">📅</div>
+            <div style="font-size:15px;font-weight:700;color:#555;margin-bottom:6px">No Upcoming Events</div>
+            <div style="font-size:13px">No events are scheduled yet. Check back soon.</div>
+            ${isStaff ? '<div style="margin-top:20px"><a href="admin.html" style="display:inline-block;padding:10px 22px;background:#C8102E;color:#fff;border-radius:6px;font-size:13px;font-weight:800;text-decoration:none">⚙ Admin Panel</a></div>' : ''}
+          </div>`}
+        </div>
+
+        <!-- CHAT PANEL -->
+        <div id="mh-panel-chat" hidden></div>
 
       </div>${MH_CSS}`);
   }
@@ -824,6 +1149,54 @@
     .mh-av-maybe.mh-av-sel { background:#f59e0b; border-color:#f59e0b; color:#fff; }
     .mh-av-out.mh-av-sel   { background:#6b7280; border-color:#6b7280; color:#fff; }
 
+    /* ── GroupMe Chat ───────────────────────────────────────────── */
+    .gm-connect-wrap { display:flex; align-items:center; justify-content:center; min-height:300px; padding:40px 20px; }
+    .gm-connect-card { text-align:center; max-width:380px; }
+    .gm-connect-icon { font-size:52px; margin-bottom:16px; }
+    .gm-connect-title { font-size:22px; font-weight:900; color:#111; margin:0 0 10px; }
+    .gm-connect-sub { font-size:14px; color:#666; line-height:1.6; margin:0 0 22px; }
+    .gm-connect-btn { padding:13px 28px; background:#00AFF0; color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:800; cursor:pointer; font-family:inherit; }
+    .gm-connect-btn:hover { opacity:.88; }
+    .gm-connect-err { font-size:13px; color:#dc2626; min-height:20px; margin-top:10px; }
+
+    .gm-loading { display:flex; align-items:center; justify-content:center; gap:10px; padding:60px 20px; color:#888; font-size:14px; }
+    .gm-spinner { width:22px; height:22px; border:2.5px solid #e5e7eb; border-top-color:#C8102E; border-radius:50%; animation:spin .7s linear infinite; flex-shrink:0; }
+    .gm-empty { text-align:center; padding:60px 20px; color:#888; font-size:14px; }
+
+    .gm-panes { display:flex; height:calc(100vh - 280px); min-height:400px; overflow:hidden; }
+
+    .gm-groups-pane { width:280px; flex-shrink:0; border-right:1px solid #e5e7eb; overflow-y:auto; background:#fff; }
+    .gm-grp-row { display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; border-bottom:1px solid #f3f4f6; transition:background 0.1s; }
+    .gm-grp-row:hover { background:#f9fafb; }
+    .gm-grp-row.gm-grp-sel { background:#fef2f4; border-left:3px solid #C8102E; }
+    .gm-grp-av { width:42px; height:42px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:900; color:#fff; flex-shrink:0; }
+    .gm-grp-info { min-width:0; flex:1; }
+    .gm-grp-name { font-size:13px; font-weight:700; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .gm-grp-meta { font-size:11px; color:#999; margin-top:2px; }
+    .gm-grp-preview { font-size:12px; color:#777; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+
+    .gm-thread-pane { flex:1; display:flex; flex-direction:column; min-width:0; background:#f8f8f8; }
+    .gm-thread-empty { display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1; color:#888; }
+    .gm-thread-head { display:flex; align-items:center; gap:12px; padding:12px 16px; background:#fff; border-bottom:1px solid #e5e7eb; flex-shrink:0; }
+    .gm-back-btn { display:none; padding:6px 12px; background:transparent; border:1px solid #ddd; border-radius:6px; font-size:12px; font-weight:700; cursor:pointer; color:#555; font-family:inherit; }
+    .gm-thread-title { font-size:14px; font-weight:800; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+    .gm-msgs { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+    .gm-msg { display:flex; gap:10px; align-items:flex-start; }
+    .gm-msg-av { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:900; color:#fff; flex-shrink:0; }
+    .gm-msg-body { min-width:0; }
+    .gm-msg-meta { display:flex; align-items:baseline; gap:8px; margin-bottom:3px; }
+    .gm-msg-name { font-size:13px; font-weight:800; color:#111; }
+    .gm-msg-time { font-size:11px; color:#aaa; }
+    .gm-msg-text { font-size:14px; color:#333; line-height:1.5; word-break:break-word; }
+
+    .gm-send-box { display:flex; gap:8px; padding:12px 16px; background:#fff; border-top:1px solid #e5e7eb; flex-shrink:0; align-items:flex-end; }
+    .gm-send-input { flex:1; padding:9px 12px; border:1.5px solid #ddd; border-radius:8px; font-size:14px; font-family:inherit; resize:none; outline:none; line-height:1.4; }
+    .gm-send-input:focus { border-color:#C8102E; }
+    .gm-send-btn { padding:9px 18px; background:#C8102E; color:#fff; border:none; border-radius:8px; font-size:13px; font-weight:800; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .gm-send-btn:hover { opacity:.88; }
+    .gm-send-err { font-size:12px; color:#dc2626; padding:4px 0; }
+
     /* Responsive */
     @media (max-width:768px) {
       .mh-hero { padding:24px 20px; }
@@ -837,6 +1210,12 @@
       .mh-evc-name { white-space:normal; }
       .mh-avatar { width:56px; height:56px; }
       .mh-av-initials { font-size:18px; }
+      .gm-panes { height:calc(100vh - 200px); }
+      .gm-groups-pane { width:100%; border-right:none; }
+      .gm-groups-pane.gm-mobile-hidden { display:none; }
+      .gm-thread-pane { display:none; width:100%; }
+      .gm-thread-pane.gm-mobile-visible { display:flex; }
+      .gm-back-btn { display:block; }
     }
   </style>`;
 
@@ -845,6 +1224,7 @@
   // Update team-strip meta on every route change too
   const origDispatch = Router.dispatch.bind(Router);
   Router.dispatch = function dispatchPatched() {
+    if (_gmPollTimer) { clearInterval(_gmPollTimer); _gmPollTimer = null; _gmCurrentGroupId = null; }
     origDispatch();
     setTimeout(updateTeamStripMeta, 0);
   };
