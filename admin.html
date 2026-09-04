@@ -490,24 +490,69 @@ function triggerAddNew() {
 function setContent(html) { document.getElementById('admin-content').innerHTML = html; }
 
 // ── Audit Logging ──────────────────────────────────────────────────────────
-async function auditLog(action, collection, recordId, summary) {
+async function auditLog(action, collection, recordId, summary, opts = {}) {
   try {
     const sb = _getClient();
     if (!sb) return;
-    let userEmail = 'unknown', userId = null;
+    let userEmail = 'unknown', userId = null, changedBy = null;
     try {
       if (typeof HeroesAuth !== 'undefined') {
         const prof = HeroesAuth.getProfile();
         const sess = HeroesAuth.getSession();
         userEmail = prof?.email || sess?.user?.email || 'unknown';
-        userId = sess?.user?.id || null;
+        userId    = sess?.user?.id || null;
+        changedBy = prof?.display_name || prof?.email || null;
       }
     } catch(_) {}
     await sb.from('audit_log').insert({
-      user_email: userEmail, user_id: userId,
-      action, collection, record_id: String(recordId || ''), summary: summary || ''
+      user_email:     userEmail,
+      user_id:        userId,
+      changed_by:     changedBy,
+      action, collection,
+      record_id:      String(recordId ?? ''),
+      summary:        summary || '',
+      previous_value: opts.previousValue ?? null,
+      new_value:      opts.newValue      ?? null,
     });
-  } catch(e) { console.warn('audit log skipped (table may not exist yet):', e.message); }
+  } catch(e) { console.warn('audit log skipped:', e.message); }
+}
+
+window._auditEntryMap = {};
+
+async function restoreFromAudit(entry) {
+  const { action, collection, record_id, previous_value } = entry;
+  const isDelete = action.includes('_delete') || action === 'delete';
+  const isAdd    = action.includes('_add')    || action === 'add';
+
+  if (['players', 'teams', 'tournaments'].includes(collection)) {
+    const d = loadData();
+    if (isDelete)        d[collection] = [...(d[collection] || []), previous_value];
+    else if (isAdd)      d[collection] = (d[collection] || []).filter(r => r.id !== record_id);
+    else                 d[collection] = (d[collection] || []).map(r => r.id === record_id ? previous_value : r);
+    saveCollection(collection, d[collection]);
+  } else {
+    const d = loadData();
+    if (isDelete)                            d[collection] = [...(d[collection] || []), previous_value];
+    else if (isAdd)                          d[collection] = (d[collection] || []).filter(r => r.id !== record_id);
+    else if (Array.isArray(previous_value))  d[collection] = previous_value;
+    else                                     d[collection] = (d[collection] || []).map(r => r.id === record_id ? previous_value : r);
+    saveData(d);
+  }
+
+  await auditLog('restore', collection, record_id,
+    `Restored to state from ${new Date(entry.created_at).toLocaleString()}`);
+  toast('Restored successfully!');
+  renderAuditLog();
+}
+
+function confirmRestore(entryId) {
+  const entry = window._auditEntryMap[entryId];
+  if (!entry) return;
+  const dateStr = new Date(entry.created_at).toLocaleString();
+  const msg = `Restore "${entry.summary}" to its state from ${dateStr}?\n\nThis will overwrite the current record.`;
+  if (confirm(msg)) {
+    restoreFromAudit(entry);
+  }
 }
 
 function toast(msg, type = 'success') {
@@ -754,8 +799,9 @@ window.assignPlayerToTeam = function(teamId) {
   const d = loadData();
   const idx = d.players.findIndex(p => p.id === playerId);
   if (idx < 0) return;
+  const before = { ...d.players[idx], teams: [...(d.players[idx].teams||[])] };
   if (!d.players[idx].teams.includes(teamId)) d.players[idx].teams.push(teamId);
-  saveCollection('players', d.players); auditLog('roster_add', 'players', playerId, `Added to team ${teamId}`); renderPlayers(); toast('Player added to roster!');
+  saveCollection('players', d.players); auditLog('roster_add', 'players', playerId, `Added to team ${teamId}`, { previousValue: before, newValue: { ...d.players[idx] } }); renderPlayers(); toast('Player added to roster!');
 };
 
 window.removeFromTeam = function(playerId, teamId) {
@@ -763,8 +809,9 @@ window.removeFromTeam = function(playerId, teamId) {
   const p = d.players.find(x => x.id === playerId);
   if (!p || !confirm(`Remove ${p.firstName} ${p.lastName} from this team roster?`)) return;
   const idx = d.players.findIndex(x => x.id === playerId);
+  const before2 = { ...d.players[idx], teams: [...(d.players[idx].teams||[])] };
   d.players[idx].teams = d.players[idx].teams.filter(t => t !== teamId);
-  saveCollection('players', d.players); auditLog('roster_remove', 'players', playerId, `Removed from team ${teamId}`); renderPlayers(); toast('Player removed from roster');
+  saveCollection('players', d.players); auditLog('roster_remove', 'players', playerId, `Removed from team ${teamId}`, { previousValue: before2, newValue: { ...d.players[idx] } }); renderPlayers(); toast('Player removed from roster');
 };
 
 async function deletePlayerFull(playerId) {
@@ -822,9 +869,10 @@ async function deletePlayerFull(playerId) {
 
         // Remove from players list and sync to Supabase
         const fresh = loadData();
+        const deletedPlayer = fresh.players.find(x => x.id === playerId) || null;
         fresh.players = fresh.players.filter(x => x.id !== playerId);
         saveCollection('players', fresh.players);
-        auditLog('player_delete', 'players', playerId, fullName);
+        auditLog('player_delete', 'players', playerId, fullName, { previousValue: deletedPlayer, newValue: null });
         closeModal();
         renderPlayers();
         toast(`${fullName} permanently deleted`);
@@ -1084,14 +1132,15 @@ async function addPlayer() {
   openModal('Add New Player', buildPlayerForm(null, data, availableUsers), 'Save Player', () => {
     const d = loadData();
     const id = 'p' + Date.now();
-    d.players.push({
+    const newPlayer = {
       id, firstName: val('pf-first'), lastName: val('pf-last'), number: val('pf-num'),
       position: val('pf-pos'), teams: Array.from(document.querySelectorAll('.pf-team:checked')).map(c=>c.value),
       bats: val('pf-bats'), throws: val('pf-throws'), joinYear: parseInt(val('pf-year')||new Date().getFullYear()),
       active: document.getElementById('pf-active').checked, photo: val('pf-photo'), email: val('pf-email'),
       credentials: { username: '', password: '' }
-    });
-    saveCollection('players', d.players); auditLog('player_add', 'players', id, `${val('pf-first')} ${val('pf-last')}`); closeModal(); renderPlayers(); toast('Player added!');
+    };
+    d.players.push(newPlayer);
+    saveCollection('players', d.players); auditLog('player_add', 'players', id, `${val('pf-first')} ${val('pf-last')}`, { previousValue: null, newValue: newPlayer }); closeModal(); renderPlayers(); toast('Player added!');
   });
 }
 
@@ -1113,6 +1162,7 @@ function editPlayer(id) {
   openModal('Edit Player', buildPlayerForm(p, data), 'Save Changes', async () => {
     const d = loadData();
     const idx = d.players.findIndex(x => x.id === id);
+    const before = d.players[idx] ? { ...d.players[idx] } : null;
     const email = val('pf-email');
     d.players[idx] = { ...d.players[idx],
       firstName: val('pf-first'), lastName: val('pf-last'), number: val('pf-num'),
@@ -1122,7 +1172,7 @@ function editPlayer(id) {
       photo: val('pf-photo')
     };
     saveCollection('players', d.players);
-    auditLog('player_edit', 'players', id, `${val('pf-first')} ${val('pf-last')}`);
+    auditLog('player_edit', 'players', id, `${val('pf-first')} ${val('pf-last')}`, { previousValue: before, newValue: d.players[idx] });
 
     // Handle optional password set
     const pw  = document.getElementById('pf-pw')?.value || '';
@@ -1167,14 +1217,14 @@ function deletePlayer(id) {
   if (!confirm('Remove this player? Their game stats will be preserved.')) return;
   const d = loadData(); const idx = d.players.findIndex(p=>p.id===id);
   const p = d.players[idx]; p.active = false;
-  saveCollection('players', d.players); auditLog('player_deactivate', 'players', id, `${p.firstName} ${p.lastName}`); renderPlayers(); toast('Player removed');
+  saveCollection('players', d.players); auditLog('player_deactivate', 'players', id, `${p.firstName} ${p.lastName}`, { previousValue: { ...p, active: true }, newValue: d.players.find(x=>x.id===id) }); renderPlayers(); toast('Player removed');
 }
 
 function reactivatePlayer(id) {
   const d = loadData(); const idx = d.players.findIndex(p=>p.id===id);
   if (idx < 0) return;
   const rp = d.players[idx]; rp.active = true;
-  saveCollection('players', d.players); auditLog('player_reactivate', 'players', id, `${rp.firstName} ${rp.lastName}`); renderPlayers(); toast('Player reactivated');
+  saveCollection('players', d.players); auditLog('player_reactivate', 'players', id, `${rp.firstName} ${rp.lastName}`, { previousValue: { ...rp, active: false }, newValue: d.players.find(x=>x.id===id) }); renderPlayers(); toast('Player reactivated');
 }
 
 window.sendPlayerPasswordReset = async function(email, name) {
@@ -1441,21 +1491,23 @@ function addTeam() {
   openModal('Add New Team', buildTeamForm(null), 'Save Team', () => {
     const d = loadData();
     const tid = 't'+Date.now();
-    d.teams.push({ id: tid, name: val('tf-name'), shortName: val('tf-short'), division: val('tf-div'), ageGroup: parseInt(val('tf-age')||50), color: val('tf-color'), manager: val('tf-mgr'), assistantManager: val('tf-asst') });
-    saveCollection('teams', d.teams); auditLog('team_add', 'teams', tid, val('tf-name')); closeModal(); renderTeams(); toast('Team added!');
+    const newTeam = { id: tid, name: val('tf-name'), shortName: val('tf-short'), division: val('tf-div'), ageGroup: parseInt(val('tf-age')||50), color: val('tf-color'), manager: val('tf-mgr'), assistantManager: val('tf-asst') };
+    d.teams.push(newTeam);
+    saveCollection('teams', d.teams); auditLog('team_add', 'teams', tid, val('tf-name'), { previousValue: null, newValue: newTeam }); closeModal(); renderTeams(); toast('Team added!');
   });
 }
 function editTeam(id) {
   const data = loadData(); const t = data.teams.find(x=>x.id===id);
   openModal('Edit Team', buildTeamForm(t), 'Save Changes', () => {
     const d = loadData(); const idx = d.teams.findIndex(x=>x.id===id);
+    const before = d.teams[idx] ? { ...d.teams[idx] } : null;
     d.teams[idx] = { ...d.teams[idx], name: val('tf-name'), shortName: val('tf-short'), division: val('tf-div'), ageGroup: parseInt(val('tf-age')), color: val('tf-color'), manager: val('tf-mgr'), assistantManager: val('tf-asst') };
-    saveCollection('teams', d.teams); auditLog('team_edit', 'teams', id, val('tf-name')); closeModal(); renderTeams(); toast('Team updated!');
+    saveCollection('teams', d.teams); auditLog('team_edit', 'teams', id, val('tf-name'), { previousValue: before, newValue: d.teams[idx] }); closeModal(); renderTeams(); toast('Team updated!');
   });
 }
 function deleteTeam(id) {
   if (!confirm('Delete this team?')) return;
-  const d = loadData(); const dt = d.teams.find(t=>t.id===id); d.teams = d.teams.filter(t=>t.id!==id); saveCollection('teams', d.teams); auditLog('team_delete', 'teams', id, dt?.name||id); renderTeams(); toast('Team deleted');
+  const d = loadData(); const dt = d.teams.find(t=>t.id===id); d.teams = d.teams.filter(t=>t.id!==id); saveCollection('teams', d.teams); auditLog('team_delete', 'teams', id, dt?.name||id, { previousValue: dt || null, newValue: null }); renderTeams(); toast('Team deleted');
 }
 function buildTeamForm(t) {
   return `
@@ -1575,15 +1627,16 @@ function addGame() {
   const data = loadData();
   openModal('Add Game', buildGameForm(null, data), 'Add Game', () => {
     const d = loadData();
-    d.games.push({
+    const newGame = {
       id: 'g'+Date.now(), teamId: val('gf-team'), date: val('gf-date'),
       opponent: val('gf-opp'), location: val('gf-loc'),
       heroScore: val('gf-hs')?parseInt(val('gf-hs')):null,
       oppScore: val('gf-os')?parseInt(val('gf-os')):null,
       result: val('gf-result'), season: val('gf-season'), notes: val('gf-notes'),
       tournamentId: val('gf-tournament')||null, playerStats: []
-    });
-    saveCollection('games', d.games); auditLog('game_add', 'games', 'g'+Date.now(), `${val('gf-date')} vs ${val('gf-opp')}`); closeModal(); renderGames(); toast('Game added!');
+    };
+    d.games.push(newGame);
+    saveCollection('games', d.games); auditLog('game_add', 'games', newGame.id, `${val('gf-date')} vs ${val('gf-opp')}`, { previousValue: null, newValue: newGame }); closeModal(); renderGames(); toast('Game added!');
   });
 }
 
@@ -1591,6 +1644,7 @@ function editGame(id) {
   const data = loadData(); const g = data.games.find(x=>x.id===id);
   openModal('Edit Game', buildGameForm(g, data), 'Save Changes', () => {
     const d = loadData(); const idx = d.games.findIndex(x=>x.id===id);
+    const before = d.games[idx] ? { ...d.games[idx] } : null;
     d.games[idx] = { ...d.games[idx], teamId: val('gf-team'), date: val('gf-date'),
       opponent: val('gf-opp'), location: val('gf-loc'),
       heroScore: val('gf-hs')?parseInt(val('gf-hs')):null,
@@ -1598,13 +1652,13 @@ function editGame(id) {
       result: val('gf-result'), season: val('gf-season'), notes: val('gf-notes'),
       tournamentId: val('gf-tournament')||null
     };
-    saveCollection('games', d.games); auditLog('game_edit', 'games', id, `${val('gf-date')} vs ${val('gf-opp')}`); closeModal(); renderGames(); toast('Game updated!');
+    saveCollection('games', d.games); auditLog('game_edit', 'games', id, `${val('gf-date')} vs ${val('gf-opp')}`, { previousValue: before, newValue: d.games[idx] }); closeModal(); renderGames(); toast('Game updated!');
   });
 }
 
 function deleteGame(id) {
   if (!confirm('Delete this game and all its stats?')) return;
-  const d = loadData(); const dg = d.games.find(g=>g.id===id); d.games = d.games.filter(g=>g.id!==id); saveCollection('games', d.games); auditLog('game_delete', 'games', id, dg ? `${dg.date} vs ${dg.opponent}` : id); renderGames(); toast('Game deleted');
+  const d = loadData(); const dg = d.games.find(g=>g.id===id); d.games = d.games.filter(g=>g.id!==id); saveCollection('games', d.games); auditLog('game_delete', 'games', id, dg ? `${dg.date} vs ${dg.opponent}` : id, { previousValue: dg || null, newValue: null }); renderGames(); toast('Game deleted');
 }
 
 function buildGameForm(g, data) {
@@ -1800,17 +1854,10 @@ function addTournament() {
     if (!name) { toast('Tournament name is required'); return; }
     const d = loadData();
     if (!d.tournaments) d.tournaments = [];
-    d.tournaments.push({
-      id: 'tr'+Date.now(), name,
-      teamId: val('tf-team')||null,
-      startDate: val('tf-start')||null,
-      endDate: val('tf-end')||null,
-      location: val('tf-location'),
-      season: val('tf-season')||new Date().getFullYear(),
-      placement: null,
-      notes: val('tf-notes')
-    });
+    const newTournament = { id: 'tr'+Date.now(), name, teamId: val('tf-team')||null, startDate: val('tf-start')||null, endDate: val('tf-end')||null, location: val('tf-location'), season: val('tf-season')||new Date().getFullYear(), placement: null, notes: val('tf-notes') };
+    d.tournaments.push(newTournament);
     saveCollection('tournaments', d.tournaments);
+    auditLog('tournament_add', 'tournaments', newTournament.id, newTournament.name, { previousValue: null, newValue: newTournament });
     closeModal(); renderTournaments(); toast('Tournament added!');
   });
 }
@@ -1823,6 +1870,7 @@ function editTournament(id) {
     if (!name) { toast('Tournament name is required'); return; }
     const d = loadData();
     const idx = d.tournaments.findIndex(x=>x.id===id);
+    const beforeTournament = d.tournaments[idx] ? { ...d.tournaments[idx] } : null;
     d.tournaments[idx] = { ...d.tournaments[idx], name,
       teamId: val('tf-team')||null,
       startDate: val('tf-start')||null,
@@ -1832,6 +1880,7 @@ function editTournament(id) {
       notes: val('tf-notes')
     };
     saveCollection('tournaments', d.tournaments);
+    auditLog('tournament_edit', 'tournaments', id, d.tournaments[idx]?.name || id, { previousValue: beforeTournament, newValue: d.tournaments[idx] });
     closeModal(); renderTournaments(); toast('Tournament updated!');
   });
 }
@@ -2033,10 +2082,12 @@ window.savePlacement = function(id, place) {
 function deleteTournament(id) {
   if (!confirm('Delete this tournament? Games assigned to it will be unlinked.')) return;
   const d = loadData();
+  const deletedTournament = (d.tournaments||[]).find(t=>t.id===id) || null;
   d.tournaments = (d.tournaments||[]).filter(t=>t.id!==id);
   d.games = d.games.map(g=>g.tournamentId===id?{...g,tournamentId:null}:g);
   saveCollection('tournaments', d.tournaments);
   saveCollection('games', d.games);
+  auditLog('tournament_delete', 'tournaments', id, deletedTournament?.name || id, { previousValue: deletedTournament, newValue: null });
   renderTournaments(); toast('Tournament deleted');
 }
 
@@ -2568,7 +2619,8 @@ function addEvent() {
   openModal('Add Event', buildEventForm(null, data), 'Add Event', () => {
     const d = loadData();
     const isTourney = val('ef-type')==='tournament';
-    d.events.push({ id:'e'+Date.now(), type:val('ef-type'), name:val('ef-name'), date:val('ef-date'), endDate:val('ef-end'),
+    const eid = 'e'+Date.now();
+    const newEvent = { id:eid, type:val('ef-type'), name:val('ef-name'), date:val('ef-date'), endDate:val('ef-end'),
       location:val('ef-loc'), venue:val('ef-venue'), address:val('ef-address'),
       teams:Array.from(document.querySelectorAll('.ef-team:checked')).map(c=>c.value),
       allowFans: document.getElementById('ef-allow-fans').checked,
@@ -2580,14 +2632,16 @@ function addEvent() {
         hotelInfo:val('ef-hotel'), hotelCode:val('ef-hotelcode'), hotelUrl:val('ef-hotelurl'),
         placement:val('ef-placement')
       } : {}),
-      availability:[], bracket: (()=>{ try { return JSON.parse(val('ef-bracket')||'null'); } catch(e){ return null; } })() });
-    saveData(d); auditLog('event_add', 'events', 'e'+Date.now(), val('ef-name')); closeModal(); renderEvents(); toast('Event added!');
+      availability:[], bracket: (()=>{ try { return JSON.parse(val('ef-bracket')||'null'); } catch(e){ return null; } })() };
+    d.events.push(newEvent);
+    saveData(d); auditLog('event_add', 'events', eid, val('ef-name'), { previousValue: null, newValue: newEvent }); closeModal(); renderEvents(); toast('Event added!');
   });
 }
 function editEvent(id) {
   const data = loadData(); const ev = data.events.find(e=>e.id===id);
   openModal('Edit Event', buildEventForm(ev, data), 'Save Changes', () => {
     const d = loadData(); const idx = d.events.findIndex(e=>e.id===id);
+    const before = d.events[idx] ? { ...d.events[idx] } : null;
     const isTourney = val('ef-type')==='tournament';
     d.events[idx] = { ...d.events[idx], type:val('ef-type'), name:val('ef-name'), date:val('ef-date'), endDate:val('ef-end'),
       location:val('ef-loc'), venue:val('ef-venue'), address:val('ef-address'),
@@ -2601,12 +2655,12 @@ function editEvent(id) {
         hotelInfo:val('ef-hotel'), hotelCode:val('ef-hotelcode'), hotelUrl:val('ef-hotelurl'),
         placement:val('ef-placement')
       } : {}), bracket: (()=>{ try { return JSON.parse(val('ef-bracket')||'null'); } catch(e){ return null; } })() };
-    saveData(d); auditLog('event_edit', 'events', id, val('ef-name')); closeModal(); renderEvents(); toast('Event updated!');
+    saveData(d); auditLog('event_edit', 'events', id, val('ef-name'), { previousValue: before, newValue: d.events[idx] }); closeModal(); renderEvents(); toast('Event updated!');
   });
 }
 function deleteEvent(id) {
   if(!confirm('Delete event?')) return;
-  const d=loadData(); const de=d.events.find(e=>e.id===id); d.events=d.events.filter(e=>e.id!==id); saveData(d); auditLog('event_delete', 'events', id, de?.name||id); renderEvents(); toast('Event deleted');
+  const d=loadData(); const de=d.events.find(e=>e.id===id); d.events=d.events.filter(e=>e.id!==id); saveData(d); auditLog('event_delete', 'events', id, de?.name||id, { previousValue: de||null, newValue: null }); renderEvents(); toast('Event deleted');
 }
 function buildEventForm(ev, data) {
   return `
@@ -2840,8 +2894,9 @@ function addNews() {
   openModal('Add Article', buildNewsForm(null), 'Publish', async () => {
     const image = await _resolveNewsImage();
     const d = loadData();
-    d.news.unshift({ id:'n'+Date.now(), title:val('nf-title'), category:val('nf-cat'), date:val('nf-date'), season:new Date().getFullYear().toString(), excerpt:val('nf-excerpt'), content:val('nf-content'), image, author:val('nf-author'), pinned:document.getElementById('nf-pinned').checked });
-    saveData(d); closeModal(); renderNews(); toast('Article published!');
+    const newArticle = { id:'n'+Date.now(), title:val('nf-title'), category:val('nf-cat'), date:val('nf-date'), season:new Date().getFullYear().toString(), excerpt:val('nf-excerpt'), content:val('nf-content'), image, author:val('nf-author'), pinned:document.getElementById('nf-pinned').checked };
+    d.news.unshift(newArticle);
+    saveData(d); auditLog('news_add', 'news', newArticle.id, newArticle.title || newArticle.id, { previousValue: null, newValue: newArticle }); closeModal(); renderNews(); toast('Article published!');
   });
 }
 function editNews(id) {
@@ -2849,13 +2904,14 @@ function editNews(id) {
   openModal('Edit Article', buildNewsForm(n), 'Save', async () => {
     const image = await _resolveNewsImage();
     const d=loadData(); const idx=d.news.findIndex(x=>x.id===id);
+    const beforeNews = d.news[idx] ? { ...d.news[idx] } : null;
     d.news[idx]={...d.news[idx],title:val('nf-title'),category:val('nf-cat'),date:val('nf-date'),excerpt:val('nf-excerpt'),content:val('nf-content'),image,author:val('nf-author'),pinned:document.getElementById('nf-pinned').checked};
-    saveData(d); closeModal(); renderNews(); toast('Article updated!');
+    saveData(d); auditLog('news_edit', 'news', id, d.news[idx]?.title || id, { previousValue: beforeNews, newValue: d.news[idx] }); closeModal(); renderNews(); toast('Article updated!');
   });
 }
 function deleteNews(id) {
   if(!confirm('Delete?')) return;
-  const d=loadData(); d.news=d.news.filter(n=>n.id!==id); saveData(d); renderNews();
+  const d=loadData(); const deletedArticle=d.news.find(n=>n.id===id)||null; d.news=d.news.filter(n=>n.id!==id); saveData(d); auditLog('news_delete', 'news', id, deletedArticle?.title || id, { previousValue: deletedArticle, newValue: null }); renderNews();
 }
 function buildNewsForm(n) {
   const cats = ['Announcement','Tournament','Game Recap','Season Update','Team News','Community'];
@@ -2983,21 +3039,23 @@ function addAward() {
   const data=loadData();
   openModal('Add Award', buildAwardForm(null,data), 'Add Award', () => {
     const d=loadData();
-    d.awards.unshift({id:'a'+Date.now(),year:val('af-year'),title:val('af-title'),team:val('af-team'),description:val('af-desc'),icon:val('af-icon')});
-    saveData(d); closeModal(); renderAwards(); toast('Award added!');
+    const newAward={id:'a'+Date.now(),year:val('af-year'),title:val('af-title'),team:val('af-team'),description:val('af-desc'),icon:val('af-icon')};
+    d.awards.unshift(newAward);
+    saveData(d); auditLog('award_add', 'awards', newAward.id, newAward.title || newAward.id, { previousValue: null, newValue: newAward }); closeModal(); renderAwards(); toast('Award added!');
   });
 }
 function editAward(id) {
   const data=loadData(); const a=data.awards.find(x=>x.id===id);
   openModal('Edit Award', buildAwardForm(a,data), 'Save', () => {
     const d=loadData(); const idx=d.awards.findIndex(x=>x.id===id);
+    const beforeAward = d.awards[idx] ? { ...d.awards[idx] } : null;
     d.awards[idx]={...d.awards[idx],year:val('af-year'),title:val('af-title'),team:val('af-team'),description:val('af-desc'),icon:val('af-icon')};
-    saveData(d); closeModal(); renderAwards(); toast('Award updated!');
+    saveData(d); auditLog('award_edit', 'awards', id, d.awards[idx]?.title || id, { previousValue: beforeAward, newValue: d.awards[idx] }); closeModal(); renderAwards(); toast('Award updated!');
   });
 }
 function deleteAward(id) {
   if(!confirm('Delete?')) return;
-  const d=loadData(); d.awards=d.awards.filter(a=>a.id!==id); saveData(d); renderAwards();
+  const d=loadData(); const deletedAward=d.awards.find(a=>a.id===id)||null; d.awards=d.awards.filter(a=>a.id!==id); saveData(d); auditLog('award_delete', 'awards', id, deletedAward?.title || id, { previousValue: deletedAward, newValue: null }); renderAwards();
 }
 function buildAwardForm(a, data) {
   return `
@@ -3139,8 +3197,9 @@ function addAlbum() {
     const d = loadData();
     if (!d.albums) d.albums = [];
     const alCat = val('al-category')==='__new__' ? (val('al-cat-new')||'').toLowerCase().trim()||'site' : val('al-category')||'site';
-    d.albums.push({ id:'al'+Date.now(), name:val('al-name'), category:alCat, date:val('al-date'), teamId:val('al-team'), description:val('al-desc'), coverUrl:val('al-cover') });
-    saveCollection('albums', d.albums); closeModal(); renderGalleryAdmin(); toast('Album added!');
+    const newAlbum = { id:'al'+Date.now(), name:val('al-name'), category:alCat, date:val('al-date'), teamId:val('al-team'), description:val('al-desc'), coverUrl:val('al-cover') };
+    d.albums.push(newAlbum);
+    saveCollection('albums', d.albums); auditLog('album_add', 'albums', newAlbum.id, newAlbum.name || newAlbum.id, { previousValue: null, newValue: newAlbum }); closeModal(); renderGalleryAdmin(); toast('Album added!');
   });
 }
 function editAlbum(id) {
@@ -3148,16 +3207,18 @@ function editAlbum(id) {
   openModal('Edit Album', buildAlbumForm(al, data), 'Save Changes', () => {
     const d = loadData(); const idx = (d.albums||[]).findIndex(a=>a.id===id);
     const alCat2 = val('al-category')==='__new__' ? (val('al-cat-new')||'').toLowerCase().trim()||'site' : val('al-category')||'site';
+    const beforeAlbum = idx>=0 ? { ...d.albums[idx] } : null;
     if (idx>=0) d.albums[idx] = { ...d.albums[idx], name:val('al-name'), category:alCat2, date:val('al-date'), teamId:val('al-team'), description:val('al-desc'), coverUrl:val('al-cover') };
-    saveCollection('albums', d.albums); closeModal(); renderGalleryAdmin(); toast('Album updated!');
+    saveCollection('albums', d.albums); auditLog('album_edit', 'albums', id, d.albums[idx]?.name || id, { previousValue: beforeAlbum, newValue: d.albums[idx] }); closeModal(); renderGalleryAdmin(); toast('Album updated!');
   });
 }
 function deleteAlbum(id) {
   if(!confirm('Delete album and all its photos?')) return;
   const d = loadData();
+  const deletedAlbum = (d.albums||[]).find(a=>a.id===id) || null;
   d.albums = (d.albums||[]).filter(a=>a.id!==id);
   d.photos = (d.photos||[]).filter(p=>p.albumId!==id);
-  saveCollection('albums', d.albums); saveCollection('photos', d.photos); renderGalleryAdmin(); toast('Album deleted');
+  saveCollection('albums', d.albums); saveCollection('photos', d.photos); auditLog('album_delete', 'albums', id, deletedAlbum?.name || id, { previousValue: deletedAlbum, newValue: null }); renderGalleryAdmin(); toast('Album deleted');
 }
 function managePhotos(albumId) {
   const data = loadData();
@@ -3192,14 +3253,15 @@ function managePhotos(albumId) {
     }
     if (!url) { toast('File or URL required','error'); return false; }
     const d = loadData(); if (!d.photos) d.photos = [];
-    d.photos.push({ id:'ph'+Date.now(), albumId, url, caption:val('ph-caption') });
-    saveCollection('photos', d.photos); closeModal(); managePhotos(albumId); toast('Photo added!');
+    const newPhoto = { id:'ph'+Date.now(), albumId, url, caption:val('ph-caption') };
+    d.photos.push(newPhoto);
+    saveCollection('photos', d.photos); auditLog('photo_add', 'photos', newPhoto.id, newPhoto.url || newPhoto.id, { previousValue: null, newValue: newPhoto }); closeModal(); managePhotos(albumId); toast('Photo added!');
   });
 }
 window.deletePhoto = function(photoId, albumId) {
   if(!confirm('Delete photo?')) return;
-  const d = loadData(); d.photos = (d.photos||[]).filter(p=>p.id!==photoId);
-  saveCollection('photos', d.photos); toast('Photo deleted'); managePhotos(albumId);
+  const d = loadData(); const deletedPhoto = (d.photos||[]).find(p=>p.id===photoId)||null; d.photos = (d.photos||[]).filter(p=>p.id!==photoId);
+  saveCollection('photos', d.photos); auditLog('photo_delete', 'photos', photoId, deletedPhoto?.url || photoId, { previousValue: deletedPhoto, newValue: null }); toast('Photo deleted'); managePhotos(albumId);
 };
 
 window.previewGalleryUpload = function(input) {
@@ -3283,21 +3345,23 @@ function renderSponsors() {
 function addSponsor() {
   openModal('Add Sponsor', buildSponsorForm(null), 'Add Sponsor', () => {
     const d=loadData();
-    d.sponsors.push({id:'s'+Date.now(),name:val('sf-name'),url:val('sf-url'),logo:val('sf-logo'),tier:val('sf-tier')});
-    saveData(d); closeModal(); renderSponsors(); toast('Sponsor added!');
+    const newSponsor={id:'s'+Date.now(),name:val('sf-name'),url:val('sf-url'),logo:val('sf-logo'),tier:val('sf-tier')};
+    d.sponsors.push(newSponsor);
+    saveData(d); auditLog('sponsor_add', 'sponsors', newSponsor.id, newSponsor.name || newSponsor.id, { previousValue: null, newValue: newSponsor }); closeModal(); renderSponsors(); toast('Sponsor added!');
   });
 }
 function editSponsor(id) {
   const data=loadData(); const s=data.sponsors.find(x=>x.id===id);
   openModal('Edit Sponsor', buildSponsorForm(s), 'Save', () => {
     const d=loadData(); const idx=d.sponsors.findIndex(x=>x.id===id);
+    const beforeSponsor = d.sponsors[idx] ? { ...d.sponsors[idx] } : null;
     d.sponsors[idx]={...d.sponsors[idx],name:val('sf-name'),url:val('sf-url'),logo:val('sf-logo'),tier:val('sf-tier')};
-    saveData(d); closeModal(); renderSponsors(); toast('Updated!');
+    saveData(d); auditLog('sponsor_edit', 'sponsors', id, d.sponsors[idx]?.name || id, { previousValue: beforeSponsor, newValue: d.sponsors[idx] }); closeModal(); renderSponsors(); toast('Updated!');
   });
 }
 function deleteSponsor(id) {
   if(!confirm('Delete?')) return;
-  const d=loadData(); d.sponsors=d.sponsors.filter(s=>s.id!==id); saveData(d); renderSponsors();
+  const d=loadData(); const deletedSponsor=d.sponsors.find(s=>s.id===id)||null; d.sponsors=d.sponsors.filter(s=>s.id!==id); saveData(d); auditLog('sponsor_delete', 'sponsors', id, deletedSponsor?.name || id, { previousValue: deletedSponsor, newValue: null }); renderSponsors();
 }
 function buildSponsorForm(s) {
   return `
@@ -3459,22 +3523,24 @@ window.pbDrop = function(e, targetIdx) {
   if (pbDragIdx === null || pbDragIdx === targetIdx) return;
   const d = loadData();
   const layout = d.pageLayouts.home;
+  const oldLayouts = layout.map(x=>({...x}));
   const [item] = layout.splice(pbDragIdx, 1);
   layout.splice(targetIdx, 0, item);
-  saveData(d); renderPageBuilder();
+  saveData(d); auditLog('layout_save', 'pageLayouts', 'all', 'Page layout reordered', { previousValue: oldLayouts, newValue: d.pageLayouts.home }); renderPageBuilder();
 };
 window.pbToggleVisible = function(idx, visible) {
-  const d = loadData(); d.pageLayouts.home[idx].visible = visible; saveData(d);
+  const d = loadData(); const beforeLayout = d.pageLayouts.home[idx] ? { ...d.pageLayouts.home[idx] } : null; d.pageLayouts.home[idx].visible = visible; saveData(d); auditLog('layout_save', 'pageLayouts', d.pageLayouts.home[idx]?.id || String(idx), `Section visibility changed: ${d.pageLayouts.home[idx]?.type || idx}`, { previousValue: beforeLayout, newValue: d.pageLayouts.home[idx] });
 };
 window.pbRemoveSection = function(idx) {
   if(!confirm('Remove this section?')) return;
-  const d = loadData(); d.pageLayouts.home.splice(idx,1); saveData(d); renderPageBuilder();
+  const d = loadData(); const removedSection = d.pageLayouts.home[idx] ? { ...d.pageLayouts.home[idx] } : null; d.pageLayouts.home.splice(idx,1); saveData(d); auditLog('layout_save', 'pageLayouts', removedSection?.id || String(idx), `Section removed: ${removedSection?.type || idx}`, { previousValue: removedSection, newValue: null }); renderPageBuilder();
 };
 window.pbAddSection = function(type) {
   const d = loadData();
   if (!d.pageLayouts) d.pageLayouts = { home: [] };
-  d.pageLayouts.home.push({ id: type+'-'+Date.now(), type, visible: true, settings: {} });
-  saveData(d);
+  const newSection = { id: type+'-'+Date.now(), type, visible: true, settings: {} };
+  d.pageLayouts.home.push(newSection);
+  saveData(d); auditLog('layout_save', 'pageLayouts', newSection.id, `Section added: ${type}`, { previousValue: null, newValue: newSection });
   renderPageBuilder();
   // For configurable types, immediately open settings so user can configure right away
   const needsConfig = ['photo-gallery'];
@@ -3558,8 +3624,9 @@ window.pbEditSection = function(idx) {
         count:    parseInt(val('pbs-count') || 5),
       };
     }
+    const beforeSection = { ...section };
     d.pageLayouts.home[idx].visible = document.getElementById('pbs-visible').checked;
-    saveData(d); closeModal(); renderPageBuilder(); toast('Section updated!');
+    saveData(d); auditLog('layout_save', 'pageLayouts', section.id || String(idx), `Section configured: ${section.type}`, { previousValue: beforeSection, newValue: d.pageLayouts.home[idx] }); closeModal(); renderPageBuilder(); toast('Section updated!');
   });
 };
 window.savePageLayout = function() { toast('Layout saved! Changes appear on the public site immediately.', 'success'); };
@@ -3603,13 +3670,24 @@ async function renderAuditLog() {
       return;
     }
 
+    window._auditEntryMap = {};
+    (rows || []).forEach(r => { window._auditEntryMap[r.id] = r; });
+
     const actionLabel = {
-      player_add:'➕ Added player', player_edit:'✏️ Edited player', player_delete:'🗑 Deleted player',
-      player_deactivate:'⏸ Deactivated player', player_reactivate:'▶️ Reactivated player',
-      roster_add:'➕ Added to roster', roster_remove:'➖ Removed from roster',
-      team_add:'➕ Added team', team_edit:'✏️ Edited team', team_delete:'🗑 Deleted team',
-      game_add:'➕ Added game', game_edit:'✏️ Edited game', game_delete:'🗑 Deleted game',
-      event_add:'➕ Added event', event_edit:'✏️ Edited event', event_delete:'🗑 Deleted event',
+      player_add: 'Player Added', player_edit: 'Player Edited',
+      player_deactivate: 'Player Deactivated', player_reactivate: 'Player Reactivated',
+      player_delete: 'Player Deleted', roster_add: 'Roster Add', roster_remove: 'Roster Remove',
+      team_add: 'Team Added', team_edit: 'Team Edited', team_delete: 'Team Deleted',
+      game_add: 'Game Added', game_edit: 'Game Edited', game_delete: 'Game Deleted',
+      event_add: 'Event Added', event_edit: 'Event Edited', event_delete: 'Event Deleted',
+      tournament_add: 'Tournament Added', tournament_edit: 'Tournament Edited', tournament_delete: 'Tournament Deleted',
+      news_add: 'News Added', news_edit: 'News Edited', news_delete: 'News Deleted',
+      award_add: 'Award Added', award_edit: 'Award Edited', award_delete: 'Award Deleted',
+      sponsor_add: 'Sponsor Added', sponsor_edit: 'Sponsor Edited', sponsor_delete: 'Sponsor Deleted',
+      album_add: 'Album Added', album_edit: 'Album Edited', album_delete: 'Album Deleted',
+      photo_add: 'Photo Added', photo_delete: 'Photo Deleted',
+      layout_save: 'Layout Saved', config_save: 'Config Saved',
+      approve: 'Account Approved', restore: 'Restored',
     };
 
     el.innerHTML = `
@@ -3617,22 +3695,27 @@ async function renderAuditLog() {
         <thead>
           <tr style="border-bottom:2px solid var(--border)">
             <th style="text-align:left;padding:8px 12px;color:var(--gray);font-weight:600">When</th>
-            <th style="text-align:left;padding:8px 12px;color:var(--gray);font-weight:600">Who</th>
+            <th style="text-align:left;padding:8px 12px;color:var(--gray);font-weight:600">Changed By</th>
             <th style="text-align:left;padding:8px 12px;color:var(--gray);font-weight:600">Action</th>
             <th style="text-align:left;padding:8px 12px;color:var(--gray);font-weight:600">Detail</th>
+            <th style="text-align:left;padding:8px 12px;color:var(--gray);font-weight:600">Restore</th>
           </tr>
         </thead>
         <tbody>
           ${rows.map(r => {
-            const d = new Date(r.created_at);
-            const when = d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ' ' +
-                         d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+            const when = new Date(r.created_at).toLocaleString();
             const label = actionLabel[r.action] || r.action;
+            const changedBy = r.changed_by || r.user_email || '—';
+            const canRestore = r.previous_value !== null || r.new_value !== null;
+            const restoreCell = canRestore
+              ? `<td style="padding:8px 12px"><button onclick="confirmRestore('${r.id}')" class="btn-small">↩ Restore</button></td>`
+              : `<td style="padding:8px 12px">—</td>`;
             return `<tr style="border-bottom:1px solid var(--border)">
               <td style="padding:8px 12px;white-space:nowrap;color:var(--gray)">${when}</td>
-              <td style="padding:8px 12px">${r.user_email || '—'}</td>
+              <td style="padding:8px 12px">${changedBy}</td>
               <td style="padding:8px 12px;white-space:nowrap">${label}</td>
               <td style="padding:8px 12px;color:var(--gray)">${r.summary || ''}</td>
+              ${restoreCell}
             </tr>`;
           }).join('')}
         </tbody>
@@ -3703,6 +3786,7 @@ function renderSettings() {
 }
 window.saveSettings = function() {
   const d = loadData();
+  const oldConfig = { ...d.config };
   d.config = { ...d.config,
     orgName: val('cfg-org'), city: val('cfg-city'), foundedYear: parseInt(val('cfg-year')),
     contactEmail: val('cfg-email'), facebookUrl: val('cfg-fb'), storeUrl: val('cfg-store'), venmoHandle: val('cfg-venmo')
@@ -3714,7 +3798,7 @@ window.saveSettings = function() {
     if (claudeKey) localStorage.setItem('heroes_claude_api_key', claudeKey);
     else localStorage.removeItem('heroes_claude_api_key');
   } catch(e) {}
-  saveCollection('config', d.config); renderSettings(); toast('Settings saved!');
+  saveCollection('config', d.config); auditLog('config_save', 'config', 'all', 'Settings updated', { previousValue: oldConfig, newValue: d.config }); renderSettings(); toast('Settings saved!');
 };
 
 // ─── SCOREBOOK SCAN ───────────────────────────────────────
@@ -4327,7 +4411,7 @@ async function approveProfile(profileId, grantRole) {
 
     const { error } = await sb.from('profiles').update(updates).eq('id', profileId);
     if (error) throw error;
-    auditLog('approve', 'profiles', profileId, `Approved account as ${grantRole}${matched ? ' (linked to player ' + matched.firstName + ' ' + matched.lastName + ')' : ''}`);
+    auditLog('approve', 'profiles', profileId, `Approved account as ${grantRole}${matched ? ' (linked to player ' + matched.firstName + ' ' + matched.lastName + ')' : ''}`, { previousValue: { ...prof, approved: false }, newValue: { ...prof, approved: true, role: grantRole } });
 
     // Fire-and-forget: notify the player they've been approved
     try {
@@ -4386,7 +4470,7 @@ async function approveRoleUpgrade(profileId) {
       rejection_reason: null,
     }).eq('id', profileId);
     if (error) throw error;
-    auditLog('approve', 'profiles', profileId, `Role upgraded to ${prof.pending_role} for ${prof.display_name || profileId}`);
+    auditLog('approve', 'profiles', profileId, `Role upgraded to ${prof.pending_role} for ${prof.display_name || profileId}`, { previousValue: { ...prof, role: prof.role }, newValue: { ...prof, role: prof.pending_role, pending_role: null } });
     toast(`✅ Role upgraded to ${prof.pending_role}!`);
     renderAccountRequests();
     updateReqBadge();
