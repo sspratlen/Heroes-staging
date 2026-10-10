@@ -1176,10 +1176,6 @@ function renderPlayer(playerId) {
   const player = data.players.find(p => p.id === playerId);
   if (!player) return renderNotFound();
   
-  const stats = getPlayerStats(playerId);
-  const curSeason = String(new Date().getFullYear());
-  const allSeasons = [...new Set(data.games.map(g => g.season).filter(Boolean))].sort().reverse();
-  const stats25 = getPlayerStats(playerId, { season: curSeason });
   const yrs = new Date().getFullYear() - player.joinYear + 1;
   const teams = player.teams.map(id => data.teams.find(t => t.id === id)).filter(Boolean);
   const canFav = typeof HeroesAuth !== 'undefined' && HeroesAuth.canUseFanFeatures();
@@ -1213,37 +1209,12 @@ function renderPlayer(playerId) {
     </div>
     <section class="section">
       <div class="container">
-        <div class="tabs" style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-          <button class="tab-btn active" onclick="switchTab(event,'ptab-season')">Season</button>
-          <select id="profile-season-select" onchange="switchProfileSeason('${playerId}',this.value)"
-            style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-weight:700;cursor:pointer;background:var(--card-bg,#fff);color:var(--text);height:36px">
-            ${allSeasons.map(s=>`<option value="${s}" ${s===curSeason?'selected':''}>${s}</option>`).join('')}
-          </select>
-          <button class="tab-btn" onclick="switchTab(event,'ptab-career')">Career</button>
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab(event,'ptab-career')">Career</button>
           <button class="tab-btn" onclick="switchTab(event,'ptab-games')">Game Log</button>
         </div>
-        <div id="ptab-season" class="tab-content active">
-          <div class="career-stat-row">
-            ${[['G',stats25.g],['AB',stats25.ab],['H',stats25.h],['2B',stats25.d],['3B',stats25.t],['HR',stats25.hr],
-               ['RBI',stats25.rbi],['R',stats25.r],['BB',stats25.bb],['K',stats25.k],['DBO',stats25.dbo]].map(([l,v])=>
-              `<div class="career-stat"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('')}
-          </div>
-          <div class="career-stat-row" style="background:#fff0f0">
-            ${[['AVG',stats25.avg],['OBP',stats25.obp],['SLG',stats25.slg],['OPS',stats25.ops],['TB',stats25.tb]].map(([l,v])=>
-              `<div class="career-stat"><div class="val" style="color:var(--red)">${v}</div><div class="lbl">${l}</div></div>`).join('')}
-          </div>
-        </div>
-        <div id="ptab-career" class="tab-content">
-          <div class="career-stat-row">
-            ${[['G',stats.g],['AB',stats.ab],['H',stats.h],['2B',stats.d],['3B',stats.t],['HR',stats.hr],
-               ['RBI',stats.rbi],['R',stats.r],['BB',stats.bb],['K',stats.k],['DBO',stats.dbo]].map(([l,v])=>
-              `<div class="career-stat"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('')}
-          </div>
-          <div class="career-stat-row" style="background:#fff0f0">
-            ${[['AVG',stats.avg],['OBP',stats.obp],['SLG',stats.slg],['OPS',stats.ops],['TB',stats.tb]].map(([l,v])=>
-              `<div class="career-stat"><div class="val" style="color:var(--red)">${v}</div><div class="lbl">${l}</div></div>`).join('')}
-          </div>
-          <p style="color:var(--gray);font-size:13px;margin-top:12px">Career totals across all teams since ${player.joinYear}</p>
+        <div id="ptab-career" class="tab-content active">
+          ${renderPlayerCard(player, data)}
         </div>
         <div id="ptab-games" class="tab-content">
           ${renderPlayerGameLog(playerId, data)}
@@ -1251,6 +1222,56 @@ function renderPlayer(playerId) {
       </div>
     </section>
   `);
+}
+
+// Baseball-card style batting record: one line per season, career totals at the bottom.
+// Career highs (best season in each column) are shown in red italics, like a league-leader mark.
+function renderPlayerCard(player, data) {
+  const played = g => g.playerStats?.some(ps => ps.playerId === player.id && (Number(ps.ab) || 0) > 0);
+  const seasons = [...new Set(data.games.filter(played).map(g => String(g.season)).filter(s => s && s !== 'undefined'))].sort();
+  if (!seasons.length) return '<p style="color:var(--gray)">No stats recorded yet</p>';
+
+  const cols = [
+    ['G','g'],['AB','ab'],['R','r'],['H','h'],['2B','d'],['3B','t'],['HR','hr'],['RBI','rbi'],
+    ['BB','bb'],['K','k'],['DBO','dbo'],['AVG','avg'],['OBP','obp'],['SLG','slg'],['OPS','ops']
+  ];
+  const lowIsGood = new Set(['k','dbo']);
+  const num = v => parseFloat(String(v).startsWith('.') ? '0' + v : v) || 0;
+
+  const lines = seasons.map(season => {
+    const teamIds = [...new Set(data.games.filter(g => String(g.season) === season && played(g)).map(g => g.teamId))];
+    const club = teamIds.map(id => data.teams.find(t => t.id === id)?.shortName).filter(Boolean).sort().join(' / ');
+    return { season, club, s: getPlayerStats(player.id, { season }) };
+  });
+
+  // Career highs only mean something with 2+ seasons
+  const best = {};
+  if (lines.length > 1) cols.forEach(([, k]) => {
+    if (lowIsGood.has(k)) return;
+    const max = Math.max(...lines.map(l => num(l.s[k])));
+    if (max > 0) best[k] = max;
+  });
+
+  const cell = (s, k, isTotal) => {
+    const hi = !isTotal && best[k] != null && num(s[k]) === best[k];
+    return `<td class="${hi ? 'bc-high' : ''}">${s[k]}</td>`;
+  };
+  const tot = getPlayerStats(player.id);
+
+  return `<div class="bc-card">
+    <div class="bc-head">
+      <div class="bc-name">${player.firstName} ${player.lastName}</div>
+      <div class="bc-sub">#${player.number} · ${player.position || ''} · Bats ${player.bats || '–'} / Throws ${player.throws || '–'}</div>
+    </div>
+    <div class="bc-band"><span>Heroes Batting Record</span>${Object.keys(best).length ? '<span class="bc-legend">Career highs in <em>red italics</em></span>' : ''}</div>
+    <div class="bc-scroll">
+      <table class="bc-table">
+        <thead><tr><th class="bc-yr">YR</th><th class="bc-club">CLUB</th>${cols.map(([l]) => `<th>${l}</th>`).join('')}</tr></thead>
+        <tbody>${lines.map(l => `<tr><td class="bc-yr">${l.season}</td><td class="bc-club">${l.club}</td>${cols.map(([, k]) => cell(l.s, k)).join('')}</tr>`).join('')}</tbody>
+        <tfoot><tr><td class="bc-yr" colspan="2">CAREER TOTALS</td>${cols.map(([, k]) => cell(tot, k, true)).join('')}</tr></tfoot>
+      </table>
+    </div>
+  </div>`;
 }
 
 function renderPlayerGameLog(playerId, data) {
@@ -2408,23 +2429,6 @@ function renderNotFound() {
 }
 
 // ─── UTILITIES ──────────────────────────────────────────────
-window.switchProfileSeason = function(playerId, season) {
-  const s = getPlayerStats(playerId, { season });
-  const panel = document.getElementById('ptab-season');
-  if (!panel) return;
-  const statRows = [
-    [['G',s.g],['AB',s.ab],['H',s.h],['2B',s.d],['3B',s.t],['HR',s.hr],['RBI',s.rbi],['R',s.r],['BB',s.bb],['K',s.k],['DBO',s.dbo]],
-    [['AVG',s.avg],['OBP',s.obp],['SLG',s.slg],['OPS',s.ops],['TB',s.tb]]
-  ];
-  panel.innerHTML = `
-    <div class="career-stat-row">
-      ${statRows[0].map(([l,v])=>`<div class="career-stat"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('')}
-    </div>
-    <div class="career-stat-row" style="background:#fff0f0">
-      ${statRows[1].map(([l,v])=>`<div class="career-stat"><div class="val" style="color:var(--red)">${v}</div><div class="lbl">${l}</div></div>`).join('')}
-    </div>`;
-};
-
 window.switchTab = function(e, tabId) {
   const allBtns = e.target.parentElement.querySelectorAll('.tab-btn');
   allBtns.forEach(b => b.classList.remove('active'));
