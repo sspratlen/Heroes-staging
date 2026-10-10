@@ -1263,21 +1263,21 @@ function renderPlayerCard(player, data) {
 
   const cell = (l, k) => {
     const hi = l.yearTotal && best[k] != null && num(l.s[k]) === best[k];
-    return `<td class="${hi ? 'bc-high' : ''}">${l.s[k]}</td>`;
+    return `<td class="${hi ? 'cc-high' : ''}">${l.s[k]}</td>`;
   };
   const tot = { s: getPlayerStats(player.id) };
 
-  return `<div class="bc-card">
-    <div class="bc-head">
-      <div class="bc-name">${player.firstName} ${player.lastName}</div>
-      <div class="bc-sub">#${player.number} · ${player.position || ''} · Bats ${player.bats || '–'} / Throws ${player.throws || '–'}</div>
+  return `<div class="cc-card">
+    <div class="cc-head">
+      <div class="cc-name">${player.firstName} ${player.lastName}</div>
+      <div class="cc-sub">#${player.number} · ${player.position || ''} · Bats ${player.bats || '–'} / Throws ${player.throws || '–'}</div>
     </div>
-    <div class="bc-band"><span>Heroes Batting Record</span>${Object.keys(best).length ? '<span class="bc-legend">Career highs in <em>red italics</em></span>' : ''}</div>
-    <div class="bc-scroll">
-      <table class="bc-table">
-        <thead><tr><th class="bc-yr">YR</th><th class="bc-club">CLUB</th>${cols.map(([l]) => `<th>${l}</th>`).join('')}</tr></thead>
-        <tbody>${lines.map(l => `<tr class="${l.sub ? 'bc-sub-row' : ''}"><td class="bc-yr">${l.season}</td><td class="bc-club">${l.club}</td>${cols.map(([, k]) => cell(l, k)).join('')}</tr>`).join('')}</tbody>
-        <tfoot><tr><td class="bc-yr" colspan="2">CAREER TOTALS</td>${cols.map(([, k]) => cell(tot, k)).join('')}</tr></tfoot>
+    <div class="cc-band"><span>Heroes Batting Record</span>${Object.keys(best).length ? '<span class="cc-legend">Career highs in <em>red italics</em></span>' : ''}</div>
+    <div class="cc-scroll">
+      <table class="cc-table">
+        <thead><tr><th class="cc-yr">YR</th><th class="cc-club">CLUB</th>${cols.map(([l]) => `<th>${l}</th>`).join('')}</tr></thead>
+        <tbody>${lines.map(l => `<tr class="${l.sub ? 'cc-sub-row' : ''}"><td class="cc-yr">${l.season}</td><td class="cc-club">${l.club}</td>${cols.map(([, k]) => cell(l, k)).join('')}</tr>`).join('')}</tbody>
+        <tfoot><tr><td class="cc-yr" colspan="2">CAREER TOTALS</td>${cols.map(([, k]) => cell(tot, k)).join('')}</tr></tfoot>
       </table>
     </div>
   </div>`;

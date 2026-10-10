@@ -921,29 +921,29 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
 .coming-soon p { color: var(--text-light); margin-bottom: 24px; }
 
 /* ─── PLAYER CAREER: BASEBALL-CARD BACK ─────────────────── */
-.bc-card { background: #FBF6E9; border: 3px solid var(--dark); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-lg); max-width: 1100px; margin: 0 auto; color: #1a1a1a; }
-.bc-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; background: var(--dark); color: #fff; padding: 12px 18px; }
-.bc-name { font-family: 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif; font-stretch: condensed; font-size: clamp(22px, 4vw, 32px); font-weight: 900; font-style: italic; text-transform: uppercase; letter-spacing: 0.5px; }
-.bc-sub { font-size: 13px; font-weight: 600; color: #d1d5db; }
-.bc-band { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; background: var(--red); color: #fff; padding: 6px 18px; font-size: 13px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
-.bc-legend { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: #ffe4e6; }
-.bc-legend em { font-style: italic; }
-.bc-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-.bc-table { width: 100%; border-collapse: collapse; font-family: 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif; font-variant-numeric: tabular-nums; font-size: 15px; white-space: nowrap; }
-.bc-table th { font-size: 12px; font-weight: 900; text-align: right; padding: 8px 10px 6px; border-bottom: 2px solid var(--dark); color: var(--dark); }
-.bc-table td { text-align: right; padding: 6px 10px; border-bottom: 1px solid #E8DFC8; }
-.bc-table tbody tr:nth-child(even) td { background: rgba(0,0,0,0.035); }
-.bc-table .bc-yr, .bc-table .bc-club { text-align: left; font-weight: 800; }
-.bc-table .bc-club { font-weight: 700; text-transform: uppercase; }
-.bc-table td.bc-high { color: var(--red); font-style: italic; font-weight: 800; }
-.bc-table tfoot td { font-weight: 900; border-top: 2px solid var(--dark); border-bottom: none; background: #F1E9D2; padding: 9px 10px; }
-.bc-table .bc-yr { position: sticky; left: 0; background: #FBF6E9; }
-.bc-table tbody tr:nth-child(even) td.bc-yr { background: #F2EDE0; }
-.bc-table tfoot td.bc-yr { background: #F1E9D2; }
+.cc-card { background: #FBF6E9; border: 3px solid var(--dark); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-lg); max-width: 1100px; margin: 0 auto; color: #1a1a1a; }
+.cc-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; background: var(--dark); color: #fff; padding: 12px 18px; }
+.cc-name { font-family: 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif; font-stretch: condensed; font-size: clamp(22px, 4vw, 32px); font-weight: 900; font-style: italic; text-transform: uppercase; letter-spacing: 0.5px; }
+.cc-sub { font-size: 13px; font-weight: 600; color: #d1d5db; }
+.cc-band { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; background: var(--red); color: #fff; padding: 6px 18px; font-size: 13px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+.cc-legend { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: #ffe4e6; }
+.cc-legend em { font-style: italic; }
+.cc-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cc-table { width: 100%; border-collapse: collapse; font-family: 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif; font-variant-numeric: tabular-nums; font-size: 15px; white-space: nowrap; }
+.cc-table th { font-size: 12px; font-weight: 900; text-align: right; padding: 8px 10px 6px; border-bottom: 2px solid var(--dark); color: var(--dark); }
+.cc-table td { text-align: right; padding: 6px 10px; border-bottom: 1px solid #E8DFC8; }
+.cc-table tbody tr:nth-child(even) td { background: rgba(0,0,0,0.035); }
+.cc-table .cc-yr, .cc-table .cc-club { text-align: left; font-weight: 800; }
+.cc-table .cc-club { font-weight: 700; text-transform: uppercase; }
+.cc-table td.cc-high { color: var(--red); font-style: italic; font-weight: 800; }
+.cc-table tfoot td { font-weight: 900; border-top: 2px solid var(--dark); border-bottom: none; background: #F1E9D2; padding: 9px 10px; }
+.cc-table .cc-yr { position: sticky; left: 0; background: #FBF6E9; }
+.cc-table tbody tr:nth-child(even) td.cc-yr { background: #F2EDE0; }
+.cc-table tfoot td.cc-yr { background: #F1E9D2; }
 @media (max-width: 600px) {
-  .bc-table { font-size: 13px; }
-  .bc-table th, .bc-table td { padding-left: 7px; padding-right: 7px; }
+  .cc-table { font-size: 13px; }
+  .cc-table th, .cc-table td { padding-left: 7px; padding-right: 7px; }
 }
-.bc-table tbody tr.bc-sub-row td { background: #F1E9D2; font-weight: 800; border-bottom: 1px solid #D9CCA8; }
-.bc-table tbody tr.bc-sub-row td.bc-club { font-style: italic; text-transform: none; }
-.bc-table tbody tr.bc-sub-row td.bc-yr { background: #F1E9D2; }
+.cc-table tbody tr.cc-sub-row td { background: #F1E9D2; font-weight: 800; border-bottom: 1px solid #D9CCA8; }
+.cc-table tbody tr.cc-sub-row td.cc-club { font-style: italic; text-transform: none; }
+.cc-table tbody tr.cc-sub-row td.cc-yr { background: #F1E9D2; }
