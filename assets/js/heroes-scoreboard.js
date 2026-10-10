@@ -303,6 +303,22 @@
               </div>
             </div>
 
+            ${player?.id && typeof openCardStylePicker === 'function' && (loadData().players || []).some(p => p.id === player.id) ? `
+            <!-- Trading card style -->
+            <div style="border:1px solid #e5e7eb;border-radius:10px;padding:18px">
+              <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:#aaa;margin-bottom:12px">TRADING CARD</div>
+              <div style="display:flex;align-items:center;gap:16px">
+                <div style="width:60px;aspect-ratio:5/7;flex-shrink:0">${renderCardFront(player, loadData())}</div>
+                <div>
+                  <button onclick="document.getElementById('ep-modal-overlay').remove();openCardStylePicker('${player.id}')"
+                    style="padding:9px 18px;background:#fff;border:1.5px solid #C8102E;color:#C8102E;border-radius:7px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit">
+                    🎴 Choose Card Style
+                  </button>
+                  <div style="font-size:12px;color:#999;margin-top:6px">How your card looks on the Players page</div>
+                </div>
+              </div>
+            </div>` : ''}
+
             <!-- Section 2: Profile Info -->
             <div style="border:1px solid #e5e7eb;border-radius:10px;padding:18px">
               <div style="font-size:11px;font-weight:800;letter-spacing:1px;color:#aaa;margin-bottom:14px">PLAYER INFO</div>
