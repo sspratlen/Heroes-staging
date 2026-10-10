@@ -4623,14 +4623,17 @@ async function submitCreateUser() {
   if (errEl) errEl.textContent = '';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { if (errEl) errEl.textContent = 'Enter a valid email.'; return; }
   if (!name) { if (errEl) errEl.textContent = 'Display name is required.'; return; }
-  if (tempPassword.length < 8) { if (errEl) errEl.textContent = 'Temp password must be at least 8 characters.'; return; }
+  const pwErr = await HeroesPassword.check(tempPassword);
+  if (pwErr) { if (errEl) errEl.textContent = pwErr; return; }
 
   const saveBtn = document.getElementById('modal-save-btn');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Creating…'; }
 
   try {
     const sb = _getClient();
-    const { data: { session } } = await sb.auth.getSession();
+    const { data: { session } } = await sb.auth.getSession().catch(e => {
+      throw new Error(`Could not refresh your sign-in (${e.message}). Check your connection and try again.`);
+    });
     if (!session?.access_token) throw new Error('Your admin session expired. Sign in again.');
 
     const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-create-user`, {
@@ -4641,6 +4644,8 @@ async function submitCreateUser() {
         'apikey': SUPABASE_ANON_KEY,
       },
       body: JSON.stringify({ email, displayName: name, role, tempPassword }),
+    }).catch(e => {
+      throw new Error(`Could not reach the create-user service (${e.message}). Check your connection, or try with browser extensions/ad-blockers paused.`);
     });
 
     const body = await res.json().catch(() => ({}));
