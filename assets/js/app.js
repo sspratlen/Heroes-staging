@@ -1068,9 +1068,10 @@ window.toggleFavoritePlayer = function(playerId, btn) {
     btn.style.color = isFav ? '#92400e' : '#fff';
     btn.style.borderColor = isFav ? '#fde68a' : 'rgba(255,255,255,0.3)';
   } else {
-    btn.textContent = isFav ? '⭐' : '☆';
+    btn.textContent = isFav ? '★' : '☆';
     btn.title = isFav ? 'Remove from favorites' : 'Add to favorites';
-    btn.style.opacity = isFav ? '1' : '0.6';
+    btn.classList.toggle('is-fav', isFav);
+    btn.setAttribute('aria-pressed', isFav);
   }
   App.toast(isFav ? 'Added to favorites!' : 'Removed from favorites', 'info');
 };
@@ -1145,7 +1146,7 @@ function renderPlayerCards(players, data) {
   return players.map(p => {
     const isFav = canFav && HeroesAuth.isFavorite(p.id);
     const favBtn = canFav
-      ? `<button class="tc-fav" onclick="event.stopPropagation();toggleFavoritePlayer('${p.id}',this)" title="${isFav?'Remove from favorites':'Add to favorites'}" style="opacity:${isFav?'1':'0.6'}">${isFav?'⭐':'☆'}</button>`
+      ? `<button class="tc-fav${isFav ? ' is-fav' : ''}" onclick="event.stopPropagation();toggleFavoritePlayer('${p.id}',this)" title="${isFav?'Remove from favorites':'Add to favorites'}" aria-pressed="${isFav}">${isFav?'★':'☆'}</button>`
       : '';
     return `<div class="tc-card" role="button" tabindex="0" aria-label="${p.firstName} ${p.lastName}: flip card"
       onclick="openCardViewer('${p.id}', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCardViewer('${p.id}', this)}">
