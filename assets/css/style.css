@@ -413,88 +413,117 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
 .result-L { background: #fee2e2; color: #dc2626; }
 .result-T { background: #fef9c3; color: #92400e; }
 
-/* ---- BASEBALL CARD FLIP ---- */
-.player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 20px; }
+/* ---- TRADING CARDS (player directory) ---- */
+.player-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 22px; }
 
-.bc-scene { perspective: 900px; cursor: pointer; height: 262px; }
-.bc-card {
-  width: 100%; height: 100%;
-  position: relative;
-  transform-style: preserve-3d;
-  transition: transform 0.55s cubic-bezier(0.4, 0.2, 0.2, 1);
-}
-.bc-scene:hover .bc-card { transform: rotateY(180deg); }
-
-.bc-front, .bc-back {
-  position: absolute; inset: 0;
-  border-radius: 10px;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-  overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.22);
-}
-
-/* Front */
-.bc-front { display: flex; flex-direction: column; background: var(--dark); }
-.bc-brand {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 5px 9px; flex-shrink: 0;
-  font-size: 9px; font-weight: 900; letter-spacing: 0.8px; text-transform: uppercase;
-  color: rgba(255,255,255,0.92);
-}
-.bc-photo { flex: 1; position: relative; overflow: hidden; }
-.bc-photo img {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  object-fit: cover; object-position: top center; z-index: 2;
-}
-.bc-initials {
-  position: absolute; inset: 0; z-index: 1;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 62px; font-weight: 900; letter-spacing: -3px;
-  color: rgba(255,255,255,0.22);
-}
-.bc-nameplate {
-  position: absolute; bottom: 0; left: 0; right: 0; z-index: 3;
-  padding: 30px 10px 10px;
-  background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 100%);
-}
-.bc-name { font-size: 13px; font-weight: 900; color: #fff; line-height: 1.15; text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
-.bc-subname { font-size: 10px; color: rgba(255,255,255,0.7); font-weight: 600; margin-top: 1px; }
-
-/* Back */
-.bc-back {
-  transform: rotateY(180deg);
-  background: var(--white);
+/* Front — 1979 Topps style. Sizes use cqw so the card scales as one piece. */
+.tc-card { aspect-ratio: 5 / 7; cursor: pointer; border-radius: 10px; outline: none; transition: transform 0.2s ease; }
+.tc-card:hover, .tc-card:focus-visible { transform: translateY(-5px) rotate(-1deg); }
+.tc-card:focus-visible .tc-front { box-shadow: 0 0 0 3px var(--red), 0 8px 22px rgba(0,0,0,0.3); }
+.tc-card:hover .tc-front { box-shadow: 0 10px 26px rgba(0,0,0,0.32), inset 0 0 0 1px rgba(0,0,0,0.08); }
+.tc-front {
+  container-type: inline-size;
+  position: relative; width: 100%; height: 100%;
   display: flex; flex-direction: column;
-  border: 2px solid var(--gray-light);
+  padding: 7% 7% 0;
+  background: #FBFAF5; border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.22), inset 0 0 0 1px rgba(0,0,0,0.08);
+  transition: box-shadow 0.2s ease;
 }
-.bc-back-hdr { padding: 8px 10px; flex-shrink: 0; color: #fff; }
-.bc-back-hdr-name { font-size: 11px; font-weight: 900; line-height: 1.2; }
-.bc-back-hdr-num { font-size: 10px; font-weight: 700; opacity: 0.85; margin-top: 1px; }
-.bc-back-body { flex: 1; padding: 5px 10px; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
-.bc-row {
-  display: flex; justify-content: space-between; align-items: baseline;
-  font-size: 10px; color: var(--text);
-  border-bottom: 1px solid var(--gray-light); padding-bottom: 3px;
+.tc-photo { position: relative; flex: 1; overflow: hidden; border: 2px solid #1C1C1C; background: linear-gradient(150deg, var(--team), #1C1C1C 85%); }
+.tc-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top center; z-index: 1; }
+.tc-initials { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 30cqw; font-weight: 900; letter-spacing: -0.04em; color: rgba(255,255,255,0.25); }
+.tc-badge {
+  position: absolute; left: 3%; bottom: 15.5%; z-index: 2;
+  width: 25cqw; height: 25cqw; border-radius: 50%;
+  background: #fff; border: 1cqw solid var(--team);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
 }
-.bc-row > span { color: var(--gray); flex-shrink: 0; }
-.bc-row > strong { font-weight: 700; text-align: right; margin-left: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60%; }
-.bc-back-stats {
-  display: flex; justify-content: space-around;
-  padding: 6px 8px;
-  background: var(--light);
-  border-top: 2px solid var(--gray-light);
-  flex-shrink: 0;
+.tc-badge img { width: 88%; height: 88%; object-fit: contain; border-radius: 50%; }
+.tc-nameline {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 2cqw;
+  padding: 2.6cqw 0 1.6cqw 27cqw;
+  color: #1C1C1C; font-weight: 800; text-transform: uppercase; line-height: 1.1;
 }
-.bc-bs { text-align: center; }
-.bc-bs-val { font-size: 13px; font-weight: 900; color: var(--dark); }
-.bc-bs-lbl { font-size: 9px; color: var(--gray); text-transform: uppercase; font-weight: 700; letter-spacing: 0.3px; }
-.bc-back-footer {
-  font-size: 9px; color: var(--gray); text-align: center;
-  padding: 4px; background: var(--light);
-  border-top: 1px solid var(--gray-light);
-  font-weight: 600; letter-spacing: 0.3px; flex-shrink: 0;
+.tc-pname { font-size: 6.6cqw; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tc-pos { font-size: 6cqw; flex-shrink: 0; }
+.tc-ribbon {
+  display: flex; justify-content: space-between; align-items: center; gap: 2cqw;
+  margin: 0 -3% 5.5%; padding: 2cqw 7cqw;
+  background: var(--team); color: #fff;
+  font-size: 6.4cqw; font-weight: 900; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap;
+  text-shadow: 0 1px 1px rgba(0,0,0,0.45);
+  clip-path: polygon(0 0, 100% 0, 95% 50%, 100% 100%, 0 100%, 5% 50%);
+}
+.tc-num { opacity: 0.9; }
+.tc-fav {
+  position: absolute; top: 3.5%; right: 3.5%; z-index: 3;
+  width: 28px; height: 28px; border-radius: 50%; border: none;
+  background: rgba(255,255,255,0.92); box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+  display: flex; align-items: center; justify-content: center; font-size: 15px; cursor: pointer;
+}
+
+/* Viewer — the card lifts out, turns over, and turns sideways to show the landscape back */
+.tcv-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  display: flex; align-items: center; justify-content: center;
+  padding-bottom: 70px;
+  background: rgba(10,10,10,0); transition: background 0.25s ease;
+}
+.tcv-overlay.open { background: rgba(10,10,10,0.84); }
+.tcv-stage { position: relative; width: var(--W); height: var(--H); perspective: 1800px; }
+.tcv-overlay.landscape .tcv-stage { width: var(--H); height: var(--W); }
+.tcv-card {
+  position: absolute; left: 50%; top: 50%;
+  width: var(--W); height: var(--H);
+  margin: calc(var(--H) / -2) 0 0 calc(var(--W) / -2);
+  transform-style: preserve-3d; cursor: pointer;
+  opacity: 0;
+  transform: translateY(40px) rotateZ(0deg) rotateY(0deg) scale(calc(var(--fs) * 0.7));
+  transition: transform 0.9s cubic-bezier(0.3, 0.1, 0.2, 1), opacity 0.25s ease;
+}
+.tcv-overlay.open .tcv-card { opacity: 1; transform: translateY(0) rotateZ(0deg) rotateY(0deg) scale(var(--fs)); }
+.tcv-overlay.open .tcv-card.flipped { transform: translateY(0) rotateZ(0deg) rotateY(180deg) scale(1); }
+.tcv-overlay.open.landscape .tcv-card.flipped { transform: translateY(0) rotateZ(90deg) rotateY(180deg) scale(1); }
+.tcv-face { position: absolute; inset: 0; border-radius: 12px; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+.tcv-face .tc-front { border-radius: 12px; }
+.tcv-back { transform: rotateY(180deg); background: #FBF6E9; }
+.tcv-back-inner { position: absolute; inset: 0; display: flex; flex-direction: column; }
+/* Printed sideways on the card, so it reads upright once the card is turned */
+.tcv-overlay.landscape .tcv-back-inner {
+  inset: auto; width: var(--H); height: var(--W);
+  left: calc((var(--W) - var(--H)) / 2); top: calc((var(--H) - var(--W)) / 2);
+  transform: rotate(-90deg);
+}
+.tcv-back-inner > p { padding: 24px; }
+.tcv-back-inner .cc-card { flex: 1; min-height: 0; max-width: none; margin: 0; border: none; border-radius: 0; box-shadow: none; display: flex; flex-direction: column; }
+.tcv-back-inner .cc-scroll { flex: 1; overflow: auto; }
+.tcv-back-inner .cc-table { font-size: 13px; }
+.tcv-back-inner .cc-table th, .tcv-back-inner .cc-table td { padding-left: 7px; padding-right: 7px; }
+.tcv-foot {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;
+  padding: 8px 16px; border-top: 2px solid var(--dark); background: #F1E9D2;
+  font-size: 11px; font-weight: 700; color: #4b4535; letter-spacing: 0.02em;
+}
+.tcv-foot > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tcv-foot-brand { display: flex; align-items: center; gap: 6px; flex-shrink: 0; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dark); }
+.tcv-foot-brand img { width: 22px; height: 22px; border-radius: 50%; object-fit: contain; background: #fff; }
+.tcv-actions { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 10001; display: flex; gap: 10px; }
+.tcv-btn {
+  padding: 10px 18px; border-radius: 999px; white-space: nowrap;
+  background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.35);
+  font-size: 14px; font-weight: 800; cursor: pointer;
+}
+.tcv-btn:hover { background: rgba(255,255,255,0.22); }
+.tcv-btn-primary { background: var(--red); border-color: var(--red); }
+.tcv-btn-primary:hover { background: var(--red-dark); }
+@media (max-width: 480px) {
+  .player-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .tcv-btn { padding: 9px 13px; font-size: 13px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tc-card, .tcv-card { transition: opacity 0.2s ease; }
 }
 
 /* ---- NEWS ---- */

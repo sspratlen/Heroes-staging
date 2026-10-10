@@ -1030,7 +1030,6 @@ function renderTeam(teamId) {
 // ─── PAGE: PLAYERS ──────────────────────────────────────────
 function renderPlayers() {
   const data = loadData();
-  const seasons = [...new Set(data.games.map(g => g.season).filter(Boolean))].sort().reverse();
   App.render(`
     <div class="page-banner">
       <div class="page-banner-inner">
@@ -1047,10 +1046,6 @@ function renderPlayers() {
             <option value="">All Teams</option>
             ${data.teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('')}
           </select>
-          <select class="form-select" id="player-season-filter" onchange="setPlayerSeasonFilter(this.value)" style="max-width:130px">
-            <option value="">Career Stats</option>
-            ${seasons.map(s=>`<option value="${s}" ${_playerSeasonFilter===s?'selected':''}>${s} Season</option>`).join('')}
-          </select>
           <button class="filter-btn active" onclick="filterByStatus(this,'true')" data-status="true">Active</button>
           <button class="filter-btn" onclick="filterByStatus(this,'false')" data-status="false">Former</button>
           <button class="filter-btn" onclick="filterByStatus(this,'all')" data-status="all">All</button>
@@ -1063,11 +1058,6 @@ function renderPlayers() {
     </section>
   `);
 }
-
-window.setPlayerSeasonFilter = function(val) {
-  _playerSeasonFilter = val || null;
-  filterPlayers();
-};
 
 window.toggleFavoritePlayer = function(playerId, btn) {
   if (typeof HeroesAuth === 'undefined' || !HeroesAuth.canUseFanFeatures()) return;
@@ -1085,62 +1075,109 @@ window.toggleFavoritePlayer = function(playerId, btn) {
   App.toast(isFav ? 'Added to favorites!' : 'Removed from favorites', 'info');
 };
 
+// Trading-card front (1979 Topps style): framed photo, logo badge, name/position, team ribbon.
+function renderCardFront(p, data, extra = '') {
+  const team = (p.teams || []).map(tid => data.teams.find(t => t.id === tid)).find(Boolean);
+  const teamColor = team?.color || '#C8102E';
+  const initials = `${p.firstName?.[0] || ''}${p.lastName?.[0] || ''}` || '?';
+  const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim();
+  return `<div class="tc-front" style="--team:${teamColor}">
+    ${extra}
+    <div class="tc-photo">
+      <div class="tc-initials">${initials}</div>
+      ${p.photo ? `<img src="${p.photo}" alt="${fullName}" loading="lazy" onerror="this.remove()">` : ''}
+    </div>
+    <div class="tc-badge"><img src="assets/img/heroes-logo.jpg" alt=""></div>
+    <div class="tc-nameline"><span class="tc-pname">${fullName}</span><span class="tc-pos">${p.position || ''}</span></div>
+    <div class="tc-ribbon"><span>Heroes${team ? ' · ' + (team.shortName || team.name) : ''}</span><span class="tc-num">#${p.number || '—'}</span></div>
+  </div>`;
+}
+
 function renderPlayerCards(players, data) {
   const canFav = typeof HeroesAuth !== 'undefined' && HeroesAuth.canUseFanFeatures();
-  const seasonFilter = _playerSeasonFilter || null;
   return players.map(p => {
-    const stats = seasonFilter ? getPlayerStats(p.id, { season: seasonFilter }) : getPlayerStats(p.id);
-    const yrs = new Date().getFullYear() - p.joinYear + 1;
-    const playerTeams = (p.teams || []).map(tid => data.teams.find(t => t.id === tid)).filter(Boolean);
-    const teamColor = playerTeams[0]?.color || '#C8102E';
-    const teamNames = playerTeams.map(t => t.shortName || t.name).join(' · ') || 'Heroes';
-    const initials = `${p.firstName?.[0] || ''}${p.lastName?.[0] || ''}` || '?';
-    const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim();
     const isFav = canFav && HeroesAuth.isFavorite(p.id);
     const favBtn = canFav
-      ? `<button onclick="event.stopPropagation();toggleFavoritePlayer('${p.id}',this)" title="${isFav?'Remove from favorites':'Add to favorites'}"
-           style="position:absolute;top:6px;right:6px;background:rgba(255,255,255,0.85);border:none;border-radius:50%;width:28px;height:28px;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:${isFav?'1':'0.6'};z-index:2">${isFav?'⭐':'☆'}</button>`
+      ? `<button class="tc-fav" onclick="event.stopPropagation();toggleFavoritePlayer('${p.id}',this)" title="${isFav?'Remove from favorites':'Add to favorites'}" style="opacity:${isFav?'1':'0.6'}">${isFav?'⭐':'☆'}</button>`
       : '';
-
-    return `<div class="bc-scene" data-route="/player/${p.id}">
-      <div class="bc-card">
-        <div class="bc-front">
-          ${favBtn}
-          <div class="bc-brand" style="background:${teamColor}">
-            <span>HEROES SSB</span>
-            <span>#${p.number || '—'}</span>
-          </div>
-          <div class="bc-photo">
-            ${p.photo ? `<img src="${p.photo}" alt="${p.firstName || ''}" onerror="this.style.display='none'">` : ''}
-            <div class="bc-initials" style="background:linear-gradient(150deg,${teamColor}cc 0%,${teamColor}44 100%)">${initials}</div>
-          </div>
-          <div class="bc-nameplate">
-            <div class="bc-name">${fullName}</div>
-            <div class="bc-subname">${p.position || 'Player'}</div>
-          </div>
-        </div>
-        <div class="bc-back">
-          <div class="bc-back-hdr" style="background:${teamColor}">
-            <div class="bc-back-hdr-name">${fullName}</div>
-            <div class="bc-back-hdr-num">#${p.number || '—'}</div>
-          </div>
-          <div class="bc-back-body">
-            <div class="bc-row"><span>Position</span><strong>${p.position || '—'}</strong></div>
-            <div class="bc-row"><span>Bat / Throw</span><strong>${p.bats || 'R'}/${p.throws || 'R'}</strong></div>
-            <div class="bc-row"><span>Teams</span><strong>${teamNames}</strong></div>
-            <div class="bc-row"><span>Since</span><strong>${p.joinYear} · ${yrs} ${yrs === 1 ? 'yr' : 'yrs'}</strong></div>
-          </div>
-          <div class="bc-back-stats">
-            <div class="bc-bs"><div class="bc-bs-val">${stats.avg}</div><div class="bc-bs-lbl">AVG</div></div>
-            <div class="bc-bs"><div class="bc-bs-val">${stats.hr}</div><div class="bc-bs-lbl">HR</div></div>
-            <div class="bc-bs"><div class="bc-bs-val">${stats.rbi}</div><div class="bc-bs-lbl">RBI</div></div>
-            <div class="bc-bs"><div class="bc-bs-val">${stats.ops}</div><div class="bc-bs-lbl">OPS</div></div>
-          </div>
-          <div class="bc-back-footer">${stats.g} G · ${stats.ab} AB · ${seasonFilter ? seasonFilter + ' Season' : 'Career'}</div>
-        </div>
-      </div>
+    return `<div class="tc-card" role="button" tabindex="0" aria-label="${p.firstName} ${p.lastName}: flip card"
+      onclick="openCardViewer('${p.id}', this)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openCardViewer('${p.id}', this)}">
+      ${renderCardFront(p, data, favBtn)}
     </div>`;
   }).join('') || '<div style="text-align:center;padding:40px;color:var(--gray);grid-column:1/-1">No players found</div>';
+}
+
+// Card viewer: the card lifts out, turns over, and (on wide screens) turns sideways so the
+// landscape back reads upright — like flipping a real card over in your hand.
+window.openCardViewer = function(playerId, fromEl) {
+  const data = loadData();
+  const p = data.players.find(x => x.id === playerId);
+  if (!p) return;
+  closeCardViewer(true);
+
+  const landscape = window.innerWidth >= 700 && window.innerHeight >= 480;
+  const vw = window.innerWidth, vh = window.innerHeight - 90; // room for the buttons
+  // Portrait card is W x 1.4W. In landscape mode the back is 1.4W wide x W tall.
+  const W = Math.floor(landscape ? Math.min(vw * 0.92 / 1.4, vh * 0.9, 680) : Math.min(vw * 0.9, vh * 0.92 / 1.4, 420));
+  const H = Math.round(W * 1.4);
+  // Shrink the portrait front so it fits on screen before it turns sideways
+  const frontScale = Math.min(1, (vh * 0.92) / H).toFixed(3);
+
+  const yrs = new Date().getFullYear() - p.joinYear + 1;
+  const teamNames = (p.teams || []).map(tid => data.teams.find(t => t.id === tid)?.name).filter(Boolean).join(' · ');
+  const backFoot = `<div class="tcv-foot">
+    <span>${p.joinYear ? `Joined ${p.joinYear} · ${yrs} ${yrs === 1 ? 'year' : 'years'} with the Heroes` : 'Heroes Senior Softball'}${teamNames ? ` · ${teamNames}` : ''}</span>
+    <span class="tcv-foot-brand"><img src="assets/img/heroes-logo.jpg" alt="">Heroes SSB · Omaha</span>
+  </div>`;
+
+  const ov = document.createElement('div');
+  ov.id = 'tc-viewer';
+  ov.className = 'tcv-overlay' + (landscape ? ' landscape' : '');
+  ov.style.setProperty('--W', W + 'px');
+  ov.style.setProperty('--H', H + 'px');
+  ov.style.setProperty('--fs', frontScale);
+  ov.innerHTML = `
+    <div class="tcv-stage" onclick="event.stopPropagation()">
+      <div class="tcv-card" onclick="flipCardViewer()">
+        <div class="tcv-face tcv-front">${renderCardFront(p, data)}</div>
+        <div class="tcv-face tcv-back"><div class="tcv-back-inner">${renderPlayerCard(p, data)}${backFoot}</div></div>
+      </div>
+    </div>
+    <div class="tcv-actions" onclick="event.stopPropagation()">
+      <button class="tcv-btn" onclick="flipCardViewer()">↻ Flip</button>
+      <button class="tcv-btn tcv-btn-primary" onclick="closeCardViewer(true);Router.navigate('/player/${p.id}')">Full Profile →</button>
+      <button class="tcv-btn" onclick="closeCardViewer()" aria-label="Close">✕ Close</button>
+    </div>`;
+  ov.addEventListener('click', () => closeCardViewer());
+  document.body.appendChild(ov);
+  document.body.style.overflow = 'hidden';
+  ov._returnFocus = fromEl;
+  document.addEventListener('keydown', _cardViewerKeys);
+  window.addEventListener('hashchange', () => closeCardViewer(true), { once: true });
+  requestAnimationFrame(() => {
+    ov.classList.add('open');
+    setTimeout(() => ov.querySelector('.tcv-card')?.classList.add('flipped'), 380);
+  });
+};
+
+window.flipCardViewer = function() {
+  document.querySelector('#tc-viewer .tcv-card')?.classList.toggle('flipped');
+};
+
+window.closeCardViewer = function(immediate) {
+  const ov = document.getElementById('tc-viewer');
+  if (!ov) return;
+  document.removeEventListener('keydown', _cardViewerKeys);
+  document.body.style.overflow = '';
+  const back = ov._returnFocus;
+  if (immediate) ov.remove();
+  else { ov.classList.remove('open'); setTimeout(() => ov.remove(), 250); }
+  if (back && document.body.contains(back)) back.focus({ preventScroll: true });
+};
+
+function _cardViewerKeys(e) {
+  if (e.key === 'Escape') closeCardViewer();
+  else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'f') flipCardViewer();
 }
 
 window.filterPlayers = function() {
@@ -1631,7 +1668,6 @@ function renderNewsArticle(articleId) {
 }
 
 // ─── PAGE: TOURNAMENTS ──────────────────────────────────
-let _playerSeasonFilter = null; // null = career (all seasons)
 let _tevFilter      = 'all';
 let _tevSort        = 'date-desc';
 let _tevView        = (()=>{ try { return localStorage.getItem('heroes_ev_view')||'card'; } catch(e){ return 'card'; } })();
@@ -3026,7 +3062,7 @@ window.lightboxDeletePhoto = function() {
 // ─── REGISTER ROUTES ────────────────────────────────────────
 Router.register('/', renderHome);
 Router.register('/team', (teamId) => renderTeam(teamId));
-Router.register('/players', () => { _playerSeasonFilter = null; renderPlayers(); });
+Router.register('/players', () => renderPlayers());
 Router.register('/player', (playerId) => renderPlayer(playerId));
 Router.register('/stats', renderStats);
 Router.register('/schedule', renderSchedule);
