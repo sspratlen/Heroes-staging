@@ -2773,7 +2773,7 @@ window.showAvailabilityForEvent = function(eventId) {
           ${[['pending','⏳ TBD'],['yes','✅ Available'],['no','❌ Unavailable'],['maybe','🟡 Maybe']].map(([v,l])=>`<option value="${v}"${status===v?' selected':''}>${l}</option>`).join('')}
         </select>
       </td>
-      <td style="font-size:12px;color:var(--gray)">${a?.notes||'—'}</td>
+      <td style="font-size:12px;color:var(--gray)">${a?.note||a?.notes||'—'}</td>
     </tr>`;
   }).join('');
   
@@ -2795,15 +2795,25 @@ window.showAvailabilityForEvent = function(eventId) {
   `;
 };
 
-window.setAvailability = function(eventId, playerId, status) {
+// Coach override of a player's answer — stored in event_attendance (staff may edit any row).
+window.setAvailability = async function(eventId, playerId, status) {
+  const sb = _getClient();
+  const { error } = status === 'pending'
+    ? await sb.from('event_attendance').delete().eq('event_id', eventId).eq('player_id', playerId)
+    : await sb.from('event_attendance').upsert(
+        { event_id: eventId, player_id: playerId, status, updated_at: new Date().toISOString() },
+        { onConflict: 'event_id,player_id' });
+  if (error) { toast('Could not save: ' + error.message, 'error'); showAvailabilityForEvent(eventId); return; }
+
   const d = loadData();
-  const evIdx = d.events.findIndex(e=>e.id===eventId);
-  if (evIdx < 0) return;
-  if (!d.events[evIdx].availability) d.events[evIdx].availability = [];
-  const aIdx = d.events[evIdx].availability.findIndex(a=>a.playerId===playerId);
-  if (aIdx >= 0) d.events[evIdx].availability[aIdx].status = status;
-  else d.events[evIdx].availability.push({ playerId, status, notes: '' });
-  saveData(d);
+  const ev = d.events.find(e => e.id === eventId);
+  if (ev) {
+    ev.availability = (ev.availability || []).filter(a => a.playerId !== playerId);
+    if (status !== 'pending') ev.availability.push({ playerId, status, note: '' });
+    localStorage.setItem('heroes_data', JSON.stringify(d));
+  }
+  showAvailabilityForEvent(eventId);
+  toast('Availability updated');
 };
 
 // ─── NEWS ──────────────────────────────────────────────────
