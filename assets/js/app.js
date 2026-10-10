@@ -1204,7 +1204,8 @@ window.openCardViewer = function(playerId, fromEl) {
   window.addEventListener('hashchange', () => closeCardViewer(true), { once: true });
   requestAnimationFrame(() => {
     ov.classList.add('open');
-    setTimeout(() => ov.querySelector('.tcv-card')?.classList.add('flipped'), 380);
+    // Flip once the lift-in (0.35s) has finished
+    setTimeout(() => ov.querySelector('.tcv-card')?.classList.add('flipped'), 450);
   });
 };
 

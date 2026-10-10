@@ -482,14 +482,19 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
   position: absolute; left: 50%; top: 50%;
   width: var(--W); height: var(--H);
   margin: calc(var(--H) / -2) 0 0 calc(var(--W) / -2);
-  transform-style: preserve-3d; cursor: pointer;
-  opacity: 0;
-  transform: translateY(40px) rotateZ(0deg) rotateY(0deg) scale(calc(var(--fs) * 0.7));
-  transition: transform 0.9s cubic-bezier(0.3, 0.1, 0.2, 1), opacity 0.25s ease;
+  transform-style: preserve-3d; cursor: pointer; will-change: transform;
+  transform: rotateZ(0deg) rotateY(0deg) scale(var(--fs));
+  /* Symmetric easing: the card is edge-on at exactly the halfway point (0.45s),
+     which is when the faces swap below. */
+  transition: transform 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95);
 }
-.tcv-overlay.open .tcv-card { opacity: 1; transform: translateY(0) rotateZ(0deg) rotateY(0deg) scale(var(--fs)); }
-.tcv-overlay.open .tcv-card.flipped { transform: translateY(0) rotateZ(0deg) rotateY(180deg) scale(1); }
-.tcv-overlay.open.landscape .tcv-card.flipped { transform: translateY(0) rotateZ(90deg) rotateY(180deg) scale(1); }
+.tcv-card.flipped { transform: rotateZ(0deg) rotateY(180deg) scale(1); }
+.tcv-overlay.landscape .tcv-card.flipped { transform: rotateZ(90deg) rotateY(180deg) scale(1); }
+/* The lift-in runs on the stage and finishes before the flip starts, so the two
+   motions never fight each other. */
+.tcv-stage { opacity: 0; }
+.tcv-overlay.open .tcv-stage { animation: tcv-in 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes tcv-in { from { opacity: 0; transform: translateY(40px) scale(0.85); } to { opacity: 1; transform: none; } }
 .tcv-face { position: absolute; inset: 0; border-radius: 12px; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
 .tcv-face .tc-front { border-radius: 12px; }
 .tcv-front { transform: rotateY(0deg) translateZ(1px); }
@@ -533,7 +538,8 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
   .tcv-btn { padding: 9px 13px; font-size: 13px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .tc-card, .tcv-card { transition: opacity 0.2s ease; }
+  .tc-card, .tcv-card { transition: none; }
+  .tcv-overlay.open .tcv-stage { animation-duration: 0.01s; }
 }
 
 /* ---- NEWS ---- */
