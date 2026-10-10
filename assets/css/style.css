@@ -489,7 +489,7 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
 .tcv-face { position: absolute; inset: 0; border-radius: 12px; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
 .tcv-face .tc-front { border-radius: 12px; }
 .tcv-front { transform: rotateY(0deg) translateZ(1px); }
-.tcv-back { transform: rotateY(180deg) translateZ(1px); background: #FBF6E9; visibility: hidden; transition: visibility 0s linear 0.45s; }
+.tcv-back { transform: rotateY(180deg) translateZ(1px); background: var(--cc-paper, #FBF6E9); visibility: hidden; transition: visibility 0s linear 0.45s; }
 /* iOS Safari can ignore backface-visibility for photos inside a face, so also swap the
    faces' visibility halfway through the turn (0.45s of the 0.9s flip). */
 .tcv-front { transition: visibility 0s linear 0.45s; }
@@ -509,8 +509,8 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
 .tcv-back-inner .cc-table th, .tcv-back-inner .cc-table td { padding-left: 7px; padding-right: 7px; }
 .tcv-foot {
   display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-shrink: 0;
-  padding: 8px 16px; border-top: 2px solid var(--dark); background: #F1E9D2;
-  font-size: 11px; font-weight: 700; color: #4b4535; letter-spacing: 0.02em;
+  padding: 8px 16px; border-top: 2px solid var(--cc-line, var(--dark)); background: var(--cc-total, #F1E9D2);
+  font-size: 11px; font-weight: 700; color: var(--cc-ink, #1a1a1a); opacity: 0.92; letter-spacing: 0.02em;
 }
 .tcv-foot > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tcv-foot-brand { display: flex; align-items: center; gap: 6px; flex-shrink: 0; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dark); }
@@ -956,29 +956,153 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
 .coming-soon p { color: var(--text-light); margin-bottom: 24px; }
 
 /* ─── PLAYER CAREER: BASEBALL-CARD BACK ─────────────────── */
-.cc-card { background: #FBF6E9; border: 3px solid var(--dark); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-lg); max-width: 1100px; margin: 0 auto; color: #1a1a1a; }
-.cc-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; background: var(--dark); color: #fff; padding: 12px 18px; }
+/* Colors come from the player's card style (.cc-s-<style>); defaults are the 1979 look. */
+.cc-s-1979, .cc-card { --cc-paper: #FBF6E9; --cc-ink: #1a1a1a; --cc-head: var(--dark); --cc-head-ink: #fff; --cc-head-sub: #d1d5db; --cc-band: var(--red); --cc-band-ink: #fff; --cc-rule: #E8DFC8; --cc-alt: rgba(0,0,0,0.035); --cc-alt-solid: #F2EDE0; --cc-total: #F1E9D2; --cc-high: var(--red); --cc-line: var(--dark); }
+.cc-s-1957 { --cc-paper: #E4DFD3; --cc-head: #1C1C1C; --cc-band: #B5212B; --cc-rule: #CFC8B8; --cc-alt-solid: #DAD4C6; --cc-total: #D6CFBF; --cc-high: #B5212B; }
+.cc-s-1971 { --cc-paper: #DADBD6; --cc-head: #111; --cc-band: #2E6B3F; --cc-rule: #C2C3BD; --cc-alt-solid: #CFD0CA; --cc-total: #C9CAC4; --cc-high: #2E6B3F; }
+.cc-s-1975 { --cc-paper: #F7E6EA; --cc-head: #1F7A4D; --cc-head-sub: #d8f0e2; --cc-band: #C0396B; --cc-rule: #E8CBD3; --cc-alt-solid: #EFD9DF; --cc-total: #EBCFD6; --cc-high: #C0396B; --cc-line: #1F7A4D; }
+.cc-s-1987 { --cc-paper: #FFF6CC; --cc-head: #1D3F8F; --cc-head-sub: #d6e0f7; --cc-band: #F2C40F; --cc-band-ink: #1D3F8F; --cc-rule: #EFE1A0; --cc-alt-solid: #F8EDB8; --cc-total: #F5E7A3; --cc-high: #C8102E; --cc-line: #1D3F8F; }
+.cc-s-chrome { --cc-paper: #EEF1F5; --cc-head: linear-gradient(135deg, #2B2F36, #0F1115); --cc-band: linear-gradient(90deg, #9AA3AD, #E6E9EE 50%, #9AA3AD); --cc-band-ink: #111; --cc-rule: #DCE1E8; --cc-alt-solid: #E4E8EE; --cc-total: #DFE3EA; --cc-high: #7C3AED; --cc-line: #2B2F36; }
+
+.cc-card { background: var(--cc-paper); border: 3px solid var(--dark); border-radius: 14px; overflow: hidden; box-shadow: var(--shadow-lg); max-width: 1100px; margin: 0 auto; color: var(--cc-ink); }
+.cc-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; background: var(--cc-head); color: var(--cc-head-ink); padding: 12px 18px; }
 .cc-name { font-family: 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif; font-stretch: condensed; font-size: clamp(22px, 4vw, 32px); font-weight: 900; font-style: italic; text-transform: uppercase; letter-spacing: 0.5px; }
-.cc-sub { font-size: 13px; font-weight: 600; color: #d1d5db; }
-.cc-band { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; background: var(--red); color: #fff; padding: 6px 18px; font-size: 13px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
-.cc-legend { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: #ffe4e6; }
+.cc-sub { font-size: 13px; font-weight: 600; color: var(--cc-head-sub); }
+.cc-band { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; background: var(--cc-band); color: var(--cc-band-ink); padding: 6px 18px; font-size: 13px; font-weight: 900; letter-spacing: 1px; text-transform: uppercase; }
+.cc-legend { font-size: 10px; font-weight: 700; letter-spacing: 0.5px; opacity: 0.85; }
 .cc-legend em { font-style: italic; }
 .cc-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .cc-table { width: 100%; border-collapse: collapse; font-family: 'Arial Narrow', 'Roboto Condensed', 'Helvetica Neue', Arial, sans-serif; font-variant-numeric: tabular-nums; font-size: 15px; white-space: nowrap; }
-.cc-table th { font-size: 12px; font-weight: 900; text-align: right; padding: 8px 10px 6px; border-bottom: 2px solid var(--dark); color: var(--dark); }
-.cc-table td { text-align: right; padding: 6px 10px; border-bottom: 1px solid #E8DFC8; }
-.cc-table tbody tr:nth-child(even) td { background: rgba(0,0,0,0.035); }
+.cc-table th { font-size: 12px; font-weight: 900; text-align: right; padding: 8px 10px 6px; border-bottom: 2px solid var(--cc-line); color: var(--cc-ink); }
+.cc-table td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--cc-rule); }
+.cc-table tbody tr:nth-child(even) td { background: var(--cc-alt); }
 .cc-table .cc-yr, .cc-table .cc-club { text-align: left; font-weight: 800; }
 .cc-table .cc-club { font-weight: 700; text-transform: uppercase; }
-.cc-table td.cc-high { color: var(--red); font-style: italic; font-weight: 800; }
-.cc-table tfoot td { font-weight: 900; border-top: 2px solid var(--dark); border-bottom: none; background: #F1E9D2; padding: 9px 10px; }
-.cc-table .cc-yr { position: sticky; left: 0; background: #FBF6E9; }
-.cc-table tbody tr:nth-child(even) td.cc-yr { background: #F2EDE0; }
-.cc-table tfoot td.cc-yr { background: #F1E9D2; }
+.cc-table td.cc-high { color: var(--cc-high); font-style: italic; font-weight: 800; }
+.cc-table tfoot td { font-weight: 900; border-top: 2px solid var(--cc-line); border-bottom: none; background: var(--cc-total); padding: 9px 10px; }
+.cc-table .cc-yr { position: sticky; left: 0; background: var(--cc-paper); }
+.cc-table tbody tr:nth-child(even) td.cc-yr { background: var(--cc-alt-solid); }
+.cc-table tfoot td.cc-yr { background: var(--cc-total); }
+.cc-table tbody tr.cc-sub-row td { background: var(--cc-total); font-weight: 800; border-bottom: 1px solid var(--cc-rule); }
+.cc-table tbody tr.cc-sub-row td.cc-club { font-style: italic; text-transform: none; }
+.cc-table tbody tr.cc-sub-row td.cc-yr { background: var(--cc-total); }
 @media (max-width: 600px) {
   .cc-table { font-size: 13px; }
   .cc-table th, .cc-table td { padding-left: 7px; padding-right: 7px; }
 }
-.cc-table tbody tr.cc-sub-row td { background: #F1E9D2; font-weight: 800; border-bottom: 1px solid #D9CCA8; }
-.cc-table tbody tr.cc-sub-row td.cc-club { font-style: italic; text-transform: none; }
-.cc-table tbody tr.cc-sub-row td.cc-yr { background: #F1E9D2; }
+
+/* ─── TRADING CARD STYLES (fronts) ───────────────────────── */
+/* 1957 — full-bleed photo, small nameplate */
+.tc-s-1957 { padding: 4%; background: #fff; }
+.tc-s-1957 .tc-photo { border: none; }
+.tc57-plate {
+  position: absolute; left: 8%; bottom: 8%; z-index: 2; max-width: 80%;
+  display: flex; flex-direction: column; gap: 0.6cqw;
+  padding: 2cqw 3.5cqw; background: #fff; border-left: 2.5cqw solid var(--team);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+}
+.tc57-name { font-size: 6.8cqw; font-weight: 900; color: #1C1C1C; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tc57-meta { font-size: 4.4cqw; font-weight: 800; color: #555; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+
+/* 1971 — black border, script signature */
+.tc-s-1971 { padding: 6% 6% 0; background: #111; }
+.tc-s-1971 .tc-photo { border: 1px solid #444; }
+.tc71-team {
+  align-self: flex-start; margin-bottom: 2.5cqw; padding-bottom: 0.8cqw;
+  border-bottom: 1.2cqw solid var(--team);
+  font-family: Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 900;
+  font-size: 8cqw; line-height: 1; color: #fff; text-transform: uppercase; letter-spacing: 0.02em;
+}
+.tc71-sig {
+  position: absolute; left: 10%; right: 10%; bottom: 19%; z-index: 2;
+  font-family: 'Snell Roundhand', 'Brush Script MT', 'Segoe Script', cursive;
+  font-size: 10cqw; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.95);
+  transform: rotate(-6deg); white-space: nowrap; overflow: hidden;
+}
+.tc71-name { display: flex; justify-content: space-between; gap: 2cqw; padding: 2.8cqw 0 5cqw; color: #fff; font-size: 5.6cqw; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+.tc71-name span:first-child { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tc71-name span:last-child { color: #aaa; flex-shrink: 0; }
+
+/* 1975 — two-tone border, pennant name */
+.tc-s-1975 { padding: 6% 6% 0; background: linear-gradient(to bottom, var(--team) 0 58%, #F0A500 58% 100%); }
+.tc75-team { font-family: 'Cooper Black', Georgia, serif; font-weight: 900; font-size: 12cqw; line-height: 1; color: #fff; text-shadow: 0.6cqw 0.6cqw 0 #1C1C1C; padding-bottom: 2.4cqw; }
+.tc75-frame { position: relative; flex: 1; display: flex; border: 1.6cqw solid #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+.tc75-frame .tc-photo { border: none; }
+.tc75-badge {
+  position: absolute; right: -4cqw; bottom: -7cqw; z-index: 2;
+  width: 19cqw; height: 19cqw; border-radius: 50%; background: #fff; border: 1cqw solid #1C1C1C;
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.tc75-badge img, .tc87-logo img, .tcch-logo img { width: 88%; height: 88%; object-fit: contain; border-radius: 50%; }
+.tc75-name { padding: 3cqw 18cqw 1cqw 0; }
+.tc75-name span { display: inline-block; max-width: 100%; padding: 1.2cqw 4cqw; border-radius: 999px; background: #fff; color: #1C1C1C; font-size: 6cqw; font-weight: 900; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tc75-pos { padding: 0 0 4.5cqw 4cqw; font-size: 5.4cqw; font-weight: 900; color: #1C1C1C; text-transform: uppercase; }
+
+/* 1987 — wood-grain border */
+.tc-s-1987 {
+  padding: 6%;
+  background:
+    linear-gradient(rgba(0,0,0,0.06), rgba(0,0,0,0.28)),
+    repeating-linear-gradient(92deg, #6B4423 0 3px, #7C512B 3px 8px, #5E3B1E 8px 10px, #74492A 10px 15px);
+}
+.tc87-frame { position: relative; flex: 1; display: flex; border: 1.2cqw solid #F3EBD8; }
+.tc87-frame .tc-photo { border: none; }
+.tc87-logo {
+  position: absolute; left: -4cqw; top: -4cqw; z-index: 2;
+  width: 21cqw; height: 21cqw; border-radius: 50%; background: #fff; border: 1cqw solid var(--team);
+  display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.4);
+}
+.tc87-name {
+  position: relative; z-index: 2; align-self: flex-end; max-width: 92%; margin-top: -5cqw;
+  padding: 1.6cqw 4cqw; background: var(--team); border: 0.8cqw solid #F3EBD8;
+  color: #fff; font-size: 6cqw; font-weight: 900; text-transform: uppercase; text-shadow: 0 1px 1px rgba(0,0,0,0.4);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tc87-team { padding-top: 2cqw; text-align: right; color: #F3EBD8; font-size: 4.8cqw; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* Chrome — refractor shine */
+.tc-s-chrome { padding: 3.5%; overflow: hidden; background: conic-gradient(from 210deg, #ff6b6b, #ffd93d, #6bff95, #4dd2ff, #b06bff, #ff6bd5, #ff6b6b); }
+.tc-s-chrome .tc-photo { border: none; border-radius: 6px; }
+.tc-s-chrome .tc-photo::after { content: ''; position: absolute; inset: 0; z-index: 1; background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, transparent 48%); }
+.tcch-shine {
+  position: absolute; inset: 3.5%; z-index: 2; pointer-events: none; border-radius: 6px;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.38) 45%, transparent 60%);
+  background-size: 250% 100%; background-position: 120% 0; mix-blend-mode: screen;
+}
+.tc-card:hover .tcch-shine, .tcv-face .tcch-shine, .tcp-opt .tcch-shine { animation: tcch-shine 3.2s linear infinite; }
+@keyframes tcch-shine { from { background-position: 150% 0; } to { background-position: -100% 0; } }
+.tcch-logo {
+  position: absolute; right: 7%; top: 6%; z-index: 3;
+  width: 16cqw; height: 16cqw; border-radius: 50%; background: #fff; box-shadow: 0 0 0 0.9cqw rgba(255,255,255,0.55);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.tcch-name { position: absolute; left: 8%; right: 8%; bottom: 13%; z-index: 3; display: flex; flex-direction: column; line-height: 1; text-transform: uppercase; }
+.tcch-name span { font-size: 5.4cqw; font-weight: 800; color: #e5e7eb; letter-spacing: 0.12em; }
+.tcch-name strong {
+  font-size: 11cqw; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: linear-gradient(180deg, #fff 0%, #c0c6cf 45%, #8a919c 55%, #f3f4f6 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.8));
+}
+.tcch-meta { position: absolute; left: 8%; bottom: 7%; z-index: 3; color: #fff; font-size: 4.4cqw; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; text-shadow: 0 1px 2px #000; }
+@media (prefers-reduced-motion: reduce) { .tcch-shine { animation: none !important; } }
+
+/* ─── PLAYER PROFILE CARD + STYLE PICKER ─────────────────── */
+.player-profile-card { width: 150px; aspect-ratio: 5 / 7; flex-shrink: 0; cursor: pointer; transition: transform 0.2s ease; transform: rotate(-2deg); }
+.player-profile-card:hover, .player-profile-card:focus-visible { transform: rotate(0deg) translateY(-4px); outline: none; }
+.pp-card-style-btn { margin-top: 12px; margin-left: 6px; padding: 7px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.3); background: rgba(255,255,255,0.12); color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.pp-card-style-btn:hover { background: rgba(255,255,255,0.22); }
+.tcp-overlay { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(10,10,10,0.82); }
+.tcp-panel { width: min(980px, 100%); max-height: 100%; overflow: auto; background: var(--white); border-radius: 16px; padding: 20px; box-shadow: var(--shadow-lg); }
+.tcp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+.tcp-head h3 { font-size: 22px; font-weight: 900; color: var(--dark); }
+.tcp-head p { font-size: 13px; color: var(--gray); margin-top: 2px; }
+.tcp-close { width: 34px; height: 34px; border-radius: 50%; background: var(--gray-light); color: var(--dark); font-size: 15px; flex-shrink: 0; }
+.tcp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 16px; }
+.tcp-opt { display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 12px; background: transparent; border: 3px solid transparent; text-align: center; transition: border-color 0.15s, background 0.15s; }
+.tcp-opt:hover { background: var(--light); }
+.tcp-opt.selected { border-color: var(--red); background: #fff5f5; }
+.tcp-card { aspect-ratio: 5 / 7; }
+.tcp-label strong { display: block; font-size: 15px; font-weight: 900; color: var(--dark); }
+.tcp-label span { font-size: 11px; color: var(--gray); }
+@media (max-width: 480px) { .tcp-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }

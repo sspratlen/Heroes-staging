@@ -1187,7 +1187,7 @@ window.openCardViewer = function(playerId, fromEl) {
     <div class="tcv-stage" onclick="event.stopPropagation()">
       <div class="tcv-card" onclick="flipCardViewer()">
         <div class="tcv-face tcv-front">${renderCardFront(p, data)}</div>
-        <div class="tcv-face tcv-back"><div class="tcv-back-inner">${renderPlayerCard(p, data)}${backFoot}</div></div>
+        <div class="tcv-face tcv-back cc-s-${cardStyleOf(p)}"><div class="tcv-back-inner">${renderPlayerCard(p, data)}${backFoot}</div></div>
       </div>
     </div>
     <div class="tcv-actions" onclick="event.stopPropagation()">
@@ -1205,6 +1205,50 @@ window.openCardViewer = function(playerId, fromEl) {
     ov.classList.add('open');
     setTimeout(() => ov.querySelector('.tcv-card')?.classList.add('flipped'), 380);
   });
+};
+
+window.openCardStylePicker = function(playerId) {
+  const data = loadData();
+  const p = data.players.find(x => x.id === playerId);
+  if (!p) return;
+  const current = cardStyleOf(p);
+  document.getElementById('tc-picker')?.remove();
+  const ov = document.createElement('div');
+  ov.id = 'tc-picker';
+  ov.className = 'tcp-overlay';
+  ov.innerHTML = `
+    <div class="tcp-panel" onclick="event.stopPropagation()" role="dialog" aria-label="Choose a card style">
+      <div class="tcp-head">
+        <div><h3>Choose your card</h3><p>Pick the year style for your card. Everyone sees it on the Players page.</p></div>
+        <button class="tcp-close" onclick="document.getElementById('tc-picker').remove()" aria-label="Close">✕</button>
+      </div>
+      <div class="tcp-grid">
+        ${CARD_STYLES.map(st => `
+          <button class="tcp-opt${st.id === current ? ' selected' : ''}" onclick="saveCardStyle('${playerId}','${st.id}',this)">
+            <div class="tcp-card">${renderCardFront(p, data, '', st.id)}</div>
+            <div class="tcp-label"><strong>${st.label}</strong><span>${st.note}</span></div>
+          </button>`).join('')}
+      </div>
+    </div>`;
+  ov.addEventListener('click', () => ov.remove());
+  document.body.appendChild(ov);
+};
+
+window.saveCardStyle = async function(playerId, styleId, btn) {
+  const client = typeof _getClient === 'function' ? _getClient() : null;
+  if (!client) { App.toast('Database unavailable — try again later', 'error'); return; }
+  document.querySelectorAll('.tcp-opt').forEach(b => b.classList.toggle('selected', b === btn));
+  const { data: rows, error } = await client.from('players').update({ card_style: styleId }).eq('legacy_id', playerId).select('id');
+  if (error || !rows || !rows.length) {
+    App.toast(error ? 'Could not save: ' + error.message : 'Could not save — your login may not be linked to this player yet', 'error');
+    return;
+  }
+  const d = loadData();
+  const pl = d.players.find(x => x.id === playerId);
+  if (pl) { pl.cardStyle = styleId; localStorage.setItem('heroes_data', JSON.stringify(d)); }
+  document.getElementById('tc-picker')?.remove();
+  App.toast('Card style saved!', 'success');
+  Router.dispatch();
 };
 
 window.flipCardViewer = function() {
@@ -1264,6 +1308,9 @@ function renderPlayer(playerId) {
   const teams = player.teams.map(id => data.teams.find(t => t.id === id)).filter(Boolean);
   const canFav = typeof HeroesAuth !== 'undefined' && HeroesAuth.canUseFanFeatures();
   const isFav = canFav && HeroesAuth.isFavorite(playerId);
+  // Players pick their own card style; staff can set it for anyone.
+  const me = _myRosterPlayer();
+  const canPickCard = (me && me.id === playerId) || (typeof HeroesAuth !== 'undefined' && HeroesAuth.isStaff() && HeroesAuth.isApproved());
   const profileFavBtn = canFav ? `
     <button id="profile-fav-btn" onclick="toggleFavoritePlayer('${playerId}', this)"
       style="margin-top:12px;padding:7px 18px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid;transition:all 0.15s;background:${isFav?'#fef9c3':'rgba(255,255,255,0.12)'};color:${isFav?'#92400e':'#fff'};border-color:${isFav?'#fde68a':'rgba(255,255,255,0.3)'}">
@@ -1273,9 +1320,9 @@ function renderPlayer(playerId) {
   App.render(`
     <div class="player-profile-header">
       <div class="player-profile-inner">
-        <div class="player-profile-photo">
-          ${player.photo ? `<img src="${player.photo}" alt="${player.firstName}" onerror="this.parentElement.innerHTML='<div class=initials>${player.firstName[0]}${player.lastName[0]}</div>'">` :
-          `<div class="initials">${player.firstName[0]}${player.lastName[0]}</div>`}
+        <div class="player-profile-card" role="button" tabindex="0" aria-label="Flip ${player.firstName}'s card"
+          onclick="openCardViewer('${playerId}', this)" onkeydown="if(event.key==='Enter'){openCardViewer('${playerId}', this)}">
+          ${renderCardFront(player, data)}
         </div>
         <div>
           <div class="breadcrumb"><a data-route="/">Home</a><span>Players</span></div>
@@ -1288,6 +1335,7 @@ function renderPlayer(playerId) {
             <div class="years-badge">⭐ ${yrs} ${yrs===1?'Year':'Years'} with Heroes</div>
           </div>
           ${profileFavBtn}
+          ${canPickCard ? `<button class="pp-card-style-btn" onclick="openCardStylePicker('${playerId}')">🎴 Choose ${me && me.id === playerId ? 'your' : 'card'} style</button>` : ''}
         </div>
       </div>
     </div>
