@@ -488,7 +488,13 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
 .tcv-overlay.open.landscape .tcv-card.flipped { transform: translateY(0) rotateZ(90deg) rotateY(180deg) scale(1); }
 .tcv-face { position: absolute; inset: 0; border-radius: 12px; overflow: hidden; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
 .tcv-face .tc-front { border-radius: 12px; }
-.tcv-back { transform: rotateY(180deg); background: #FBF6E9; }
+.tcv-front { transform: rotateY(0deg) translateZ(1px); }
+.tcv-back { transform: rotateY(180deg) translateZ(1px); background: #FBF6E9; visibility: hidden; transition: visibility 0s linear 0.45s; }
+/* iOS Safari can ignore backface-visibility for photos inside a face, so also swap the
+   faces' visibility halfway through the turn (0.45s of the 0.9s flip). */
+.tcv-front { transition: visibility 0s linear 0.45s; }
+.tcv-card.flipped .tcv-front { visibility: hidden; }
+.tcv-card.flipped .tcv-back { visibility: visible; }
 .tcv-back-inner { position: absolute; inset: 0; display: flex; flex-direction: column; }
 /* Printed sideways on the card, so it reads upright once the card is turned */
 .tcv-overlay.landscape .tcv-back-inner {

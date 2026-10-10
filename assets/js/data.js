@@ -474,6 +474,7 @@ async function initData() {
         active:    p.active,
         photo:     p.photo   || '',
         email:     p.email   || '',
+        cardStyle: p.card_style || '',
       }));
     }
 

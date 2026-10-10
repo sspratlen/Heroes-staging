@@ -1075,22 +1075,69 @@ window.toggleFavoritePlayer = function(playerId, btn) {
   App.toast(isFav ? 'Added to favorites!' : 'Removed from favorites', 'info');
 };
 
-// Trading-card front (1979 Topps style): framed photo, logo badge, name/position, team ribbon.
-function renderCardFront(p, data, extra = '') {
+// Trading-card styles players can pick for their card (players.card_style). Each style is a
+// front layout plus a matching color scheme for the batting-record back.
+const CARD_STYLES = [
+  { id: '1957',   label: '1957', note: 'Full-bleed photo, small nameplate' },
+  { id: '1971',   label: '1971', note: 'Black border, signature' },
+  { id: '1975',   label: '1975', note: 'Two-tone borders, pennant' },
+  { id: '1979',   label: '1979', note: 'White border, team ribbon' },
+  { id: '1987',   label: '1987', note: 'Wood-grain border' },
+  { id: 'chrome', label: 'Chrome', note: 'Shiny refractor' },
+];
+const DEFAULT_CARD_STYLE = '1979';
+const cardStyleOf = p => CARD_STYLES.some(s => s.id === p.cardStyle) ? p.cardStyle : DEFAULT_CARD_STYLE;
+
+function renderCardFront(p, data, extra = '', styleId) {
+  const style = styleId || cardStyleOf(p);
   const team = (p.teams || []).map(tid => data.teams.find(t => t.id === tid)).find(Boolean);
   const teamColor = team?.color || '#C8102E';
+  const teamLabel = team ? (team.shortName || team.name) : '';
   const initials = `${p.firstName?.[0] || ''}${p.lastName?.[0] || ''}` || '?';
   const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim();
-  return `<div class="tc-front" style="--team:${teamColor}">
-    ${extra}
-    <div class="tc-photo">
+  const num = `#${p.number || '—'}`;
+  const pos = p.position || '';
+  const photo = `<div class="tc-photo">
       <div class="tc-initials">${initials}</div>
       ${p.photo ? `<img src="${p.photo}" alt="${fullName}" loading="lazy" onerror="this.remove()">` : ''}
-    </div>
-    <div class="tc-badge"><img src="assets/img/heroes-logo.jpg" alt=""></div>
-    <div class="tc-nameline"><span class="tc-pname">${fullName}</span><span class="tc-pos">${p.position || ''}</span></div>
-    <div class="tc-ribbon"><span>Heroes${team ? ' · ' + (team.shortName || team.name) : ''}</span><span class="tc-num">#${p.number || '—'}</span></div>
-  </div>`;
+    </div>`;
+  const logo = cls => `<div class="${cls}"><img src="assets/img/heroes-logo.jpg" alt=""></div>`;
+
+  let body;
+  switch (style) {
+    case '1957':
+      body = `${photo}
+        <div class="tc57-plate"><span class="tc57-name">${fullName}</span><span class="tc57-meta">${pos}${teamLabel ? ' · Heroes ' + teamLabel : ''}</span></div>`;
+      break;
+    case '1971':
+      body = `<div class="tc71-team">Heroes${teamLabel ? ' ' + teamLabel : ''}</div>
+        ${photo}
+        <div class="tc71-sig">${fullName}</div>
+        <div class="tc71-name"><span>${fullName}</span><span>${pos}</span></div>`;
+      break;
+    case '1975':
+      body = `<div class="tc75-team">heroes</div>
+        <div class="tc75-frame">${photo}${logo('tc75-badge')}</div>
+        <div class="tc75-name"><span>${fullName}</span></div>
+        <div class="tc75-pos">${pos}</div>`;
+      break;
+    case '1987':
+      body = `<div class="tc87-frame">${photo}${logo('tc87-logo')}</div>
+        <div class="tc87-name">${fullName}</div>
+        <div class="tc87-team">Heroes${teamLabel ? ' · ' + teamLabel : ''}</div>`;
+      break;
+    case 'chrome':
+      body = `${photo}<div class="tcch-shine"></div>
+        ${logo('tcch-logo')}
+        <div class="tcch-name"><span>${p.firstName || ''}</span><strong>${p.lastName || ''}</strong></div>
+        <div class="tcch-meta">${pos} · ${num}</div>`;
+      break;
+    default: // 1979
+      body = `${photo}${logo('tc-badge')}
+        <div class="tc-nameline"><span class="tc-pname">${fullName}</span><span class="tc-pos">${pos}</span></div>
+        <div class="tc-ribbon"><span>Heroes${teamLabel ? ' · ' + teamLabel : ''}</span><span class="tc-num">${num}</span></div>`;
+  }
+  return `<div class="tc-front tc-s-${style}" style="--team:${teamColor}">${extra}${body}</div>`;
 }
 
 function renderPlayerCards(players, data) {
@@ -1304,7 +1351,7 @@ function renderPlayerCard(player, data) {
   };
   const tot = { s: getPlayerStats(player.id) };
 
-  return `<div class="cc-card">
+  return `<div class="cc-card cc-s-${cardStyleOf(player)}">
     <div class="cc-head">
       <div class="cc-name">${player.firstName} ${player.lastName}</div>
       <div class="cc-sub">#${player.number} · ${player.position || ''} · Bats ${player.bats || '–'} / Throws ${player.throws || '–'}</div>
