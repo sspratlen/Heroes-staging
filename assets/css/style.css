@@ -486,7 +486,8 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
   transform: rotateZ(0deg) rotateY(0deg) scale(var(--fs));
   /* Symmetric easing: the card is edge-on at exactly the halfway point (0.45s),
      which is when the faces swap below. */
-  transition: transform 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+  transition: transform 0.9s cubic-bezier(0.45, 0.05, 0.55, 0.95),
+              width 0.3s ease, height 0.3s ease, margin 0.3s ease;
 }
 .tcv-card.flipped { transform: rotateZ(0deg) rotateY(180deg) scale(1); }
 .tcv-overlay.landscape .tcv-card.flipped { transform: rotateZ(90deg) rotateY(180deg) scale(1); }
@@ -510,6 +511,7 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
   inset: auto; width: var(--H); height: var(--W);
   left: calc((var(--W) - var(--H)) / 2); top: calc((var(--H) - var(--W)) / 2);
   transform: rotate(-90deg);
+  transition: width 0.3s ease, height 0.3s ease, left 0.3s ease, top 0.3s ease;
 }
 .tcv-back-inner > p { padding: 24px; }
 .tcv-back-inner .cc-card { flex: 1; min-height: 0; max-width: none; margin: 0; border: none; border-radius: 0; box-shadow: none; display: flex; flex-direction: column; }
@@ -525,6 +527,10 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
 .tcv-foot-brand { display: flex; align-items: center; gap: 6px; flex-shrink: 0; font-weight: 900; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dark); }
 .tcv-foot-brand img { width: 22px; height: 22px; border-radius: 50%; object-fit: contain; background: #fff; }
 .tcv-actions { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 10001; display: flex; gap: 10px; }
+/* Phone held sideways: buttons stack on the right so the card gets the full height */
+.tcv-overlay.short { padding: 0 84px 0 0; }
+.tcv-overlay.short .tcv-actions { left: auto; right: 10px; bottom: auto; top: 50%; transform: translateY(-50%); flex-direction: column; }
+.tcv-overlay.short .tcv-btn { padding: 9px 10px; font-size: 12px; width: 70px; white-space: normal; line-height: 1.15; }
 .tcv-btn {
   padding: 10px 18px; border-radius: 999px; white-space: nowrap;
   background: rgba(255,255,255,0.12); color: #fff; border: 1px solid rgba(255,255,255,0.35);

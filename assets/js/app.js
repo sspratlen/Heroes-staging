@@ -1163,14 +1163,6 @@ window.openCardViewer = function(playerId, fromEl) {
   if (!p) return;
   closeCardViewer(true);
 
-  const landscape = window.innerWidth >= 700 && window.innerHeight >= 480;
-  const vw = window.innerWidth, vh = window.innerHeight - 90; // room for the buttons
-  // Portrait card is W x 1.4W. In landscape mode the back is 1.4W wide x W tall.
-  const W = Math.floor(landscape ? Math.min(vw * 0.92 / 1.4, vh * 0.9, 680) : Math.min(vw * 0.9, vh * 0.92 / 1.4, 420));
-  const H = Math.round(W * 1.4);
-  // Shrink the portrait front so it fits on screen before it turns sideways
-  const frontScale = Math.min(1, (vh * 0.92) / H).toFixed(3);
-
   const yrs = new Date().getFullYear() - p.joinYear + 1;
   const teamNames = (p.teams || []).map(tid => data.teams.find(t => t.id === tid)?.name).filter(Boolean).join(' · ');
   const backFoot = `<div class="tcv-foot">
@@ -1180,10 +1172,7 @@ window.openCardViewer = function(playerId, fromEl) {
 
   const ov = document.createElement('div');
   ov.id = 'tc-viewer';
-  ov.className = 'tcv-overlay' + (landscape ? ' landscape' : '');
-  ov.style.setProperty('--W', W + 'px');
-  ov.style.setProperty('--H', H + 'px');
-  ov.style.setProperty('--fs', frontScale);
+  ov.className = 'tcv-overlay';
   ov.innerHTML = `
     <div class="tcv-stage" onclick="event.stopPropagation()">
       <div class="tcv-card" onclick="flipCardViewer()">
@@ -1197,6 +1186,15 @@ window.openCardViewer = function(playerId, fromEl) {
       <button class="tcv-btn" onclick="closeCardViewer()" aria-label="Close">✕ Close</button>
     </div>`;
   ov.addEventListener('click', () => closeCardViewer());
+  _layoutCardViewer(ov);
+  const card = ov.querySelector('.tcv-card');
+  // Once the card has turned over, widen the back to fill the screen
+  card.addEventListener('transitionend', e => {
+    if (e.target === card && e.propertyName === 'transform' && card.classList.contains('flipped')) {
+      ov.classList.add('expanded'); _layoutCardViewer(ov);
+    }
+  });
+  window.addEventListener('resize', _cardViewerResize);
   document.body.appendChild(ov);
   document.body.style.overflow = 'hidden';
   ov._returnFocus = fromEl;
@@ -1253,14 +1251,50 @@ window.saveCardStyle = async function(playerId, styleId, btn) {
   Router.dispatch();
 };
 
+// Sizes the viewer for the current screen. Wide screens (and phones held sideways) turn the
+// card so the back reads in landscape; tall screens flip it in place. The card is 5:7; once
+// flipped ('expanded') in landscape, the back grows wider than the card to use the whole screen.
+function _layoutCardViewer(ov) {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const landscape = vw > vh && vw >= 480;
+  const short = landscape && vh < 520;              // phone held sideways: buttons go on the right
+  const availW = vw - (short ? 84 : 0) - 16;
+  const availH = vh - (short ? 0 : 74) - 16;
+  let W, H;
+  if (landscape) W = Math.floor(Math.min(availH, availW / 1.4, 680));
+  else W = Math.floor(Math.min(availW, availH / 1.4, 440));
+  H = Math.round(W * 1.4);
+  const fs = Math.min(1, availH / H).toFixed(3);     // shrink the portrait front to fit
+  let backW = W, backH = H;                           // the back's size in card coordinates
+  if (landscape && ov.classList.contains('expanded')) {
+    backH = Math.max(H, Math.floor(Math.min(availW, 1100)));  // widen on screen
+  }
+  ov.classList.toggle('landscape', landscape);
+  ov.classList.toggle('short', short);
+  ov.style.setProperty('--W', backW + 'px');
+  ov.style.setProperty('--H', backH + 'px');
+  ov.style.setProperty('--fh', H + 'px');
+  ov.style.setProperty('--fs', fs);
+}
+
+function _cardViewerResize() {
+  const ov = document.getElementById('tc-viewer');
+  if (ov) _layoutCardViewer(ov);
+}
+
 window.flipCardViewer = function() {
-  document.querySelector('#tc-viewer .tcv-card')?.classList.toggle('flipped');
+  const ov = document.getElementById('tc-viewer');
+  const card = ov?.querySelector('.tcv-card');
+  if (!card) return;
+  if (card.classList.contains('flipped')) { ov.classList.remove('expanded'); _layoutCardViewer(ov); }
+  card.classList.toggle('flipped');
 };
 
 window.closeCardViewer = function(immediate) {
   const ov = document.getElementById('tc-viewer');
   if (!ov) return;
   document.removeEventListener('keydown', _cardViewerKeys);
+  window.removeEventListener('resize', _cardViewerResize);
   document.body.style.overflow = '';
   const back = ov._returnFocus;
   if (immediate) ov.remove();
