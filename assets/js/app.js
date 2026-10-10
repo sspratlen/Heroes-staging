@@ -1225,7 +1225,7 @@ function renderPlayer(playerId) {
         <div id="ptab-season" class="tab-content active">
           <div class="career-stat-row">
             ${[['G',stats25.g],['AB',stats25.ab],['H',stats25.h],['2B',stats25.d],['3B',stats25.t],['HR',stats25.hr],
-               ['RBI',stats25.rbi],['R',stats25.r],['BB',stats25.bb],['K',stats25.k]].map(([l,v])=>
+               ['RBI',stats25.rbi],['R',stats25.r],['BB',stats25.bb],['K',stats25.k],['DBO',stats25.dbo]].map(([l,v])=>
               `<div class="career-stat"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('')}
           </div>
           <div class="career-stat-row" style="background:#fff0f0">
@@ -1236,7 +1236,7 @@ function renderPlayer(playerId) {
         <div id="ptab-career" class="tab-content">
           <div class="career-stat-row">
             ${[['G',stats.g],['AB',stats.ab],['H',stats.h],['2B',stats.d],['3B',stats.t],['HR',stats.hr],
-               ['RBI',stats.rbi],['R',stats.r],['BB',stats.bb],['K',stats.k]].map(([l,v])=>
+               ['RBI',stats.rbi],['R',stats.r],['BB',stats.bb],['K',stats.k],['DBO',stats.dbo]].map(([l,v])=>
               `<div class="career-stat"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('')}
           </div>
           <div class="career-stat-row" style="background:#fff0f0">
@@ -1265,12 +1265,12 @@ function renderPlayerGameLog(playerId, data) {
       <td>${g.opponent}</td>
       <td><span class="result-badge result-${gameResult(g)||'T'}">${gameResult(g)||'–'}</span></td>
       <td>${ps.ab}</td><td>${ps.h}</td><td>${ps.d}</td><td>${ps.t}</td><td>${ps.hr}</td>
-      <td>${ps.rbi}</td><td>${ps.r}</td><td>${ps.bb}</td><td>${ps.k}</td>
+      <td>${ps.rbi}</td><td>${ps.r}</td><td>${ps.bb}</td><td>${ps.k}</td><td>${ps.dbo||0}</td>
       <td class="stat-highlight">${StatCalc.avg(ps.h,ps.ab)}</td>
     </tr>`;
   }).join('');
   return `<div class="stats-table-wrap"><table class="stats-table">
-    <thead><tr><th>Date</th><th>Opponent</th><th>Result</th><th>AB</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>RBI</th><th>R</th><th>BB</th><th>K</th><th>AVG</th></tr></thead>
+    <thead><tr><th>Date</th><th>Opponent</th><th>Result</th><th>AB</th><th>H</th><th>2B</th><th>3B</th><th>HR</th><th>RBI</th><th>R</th><th>BB</th><th>K</th><th>DBO</th><th>AVG</th></tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
 }
@@ -1402,7 +1402,7 @@ function buildFullStatsTable(data, season, filters = {}, search = '') {
       <td>${s.g}</td><td>${s.ab}</td><td>${s.h}</td>
       <td>${s.d}</td><td>${s.t}</td><td>${s.hr}</td>
       <td>${s.rbi}</td><td>${s.r}</td>
-      <td>${s.bb}</td><td>${s.k}</td><td>${s.hbp}</td>
+      <td>${s.bb}</td><td>${s.k}</td><td>${s.dbo}</td><td>${s.hbp}</td>
       <td class="stat-highlight">${s.avg}</td>
       <td>${s.obp}</td><td>${s.slg}</td><td>${s.ops}</td>
     </tr>`;
@@ -1411,7 +1411,7 @@ function buildFullStatsTable(data, season, filters = {}, search = '') {
     <thead><tr>
       <th>Player</th><th>Team</th><th>POS</th>
       <th>G</th><th>AB</th><th>H</th><th>2B</th><th>3B</th><th>HR</th>
-      <th>RBI</th><th>R</th><th>BB</th><th>K</th><th>HBP</th>
+      <th>RBI</th><th>R</th><th>BB</th><th>K</th><th>DBO</th><th>HBP</th>
       <th>AVG</th><th>OBP</th><th>SLG</th><th>OPS</th>
     </tr></thead>
     <tbody>${rows||'<tr><td colspan="18" style="text-align:center;padding:30px;color:var(--gray)">No stats yet</td></tr>'}</tbody>
@@ -1490,14 +1490,14 @@ window.showBoxScore = function(gameId) {
       <td style="font-weight:700">${name}</td>
       <td>${ps.ab||0}</td><td>${ps.r||0}</td><td>${ps.h||0}</td>
       <td>${singles}</td><td>${ps.d||0}</td><td>${ps.t||0}</td><td>${ps.hr||0}</td>
-      <td>${ps.rbi||0}</td><td>${ps.bb||0}</td><td>${ps.k||0}</td>
+      <td>${ps.rbi||0}</td><td>${ps.bb||0}</td><td>${ps.k||0}</td><td>${ps.dbo||0}</td>
       <td style="font-weight:800;color:var(--red)">${avg}</td>
     </tr>`;
   }).join('');
 
   // Totals row
   const tot = g.playerStats.reduce((acc, ps) => {
-    ['ab','r','h','d','t','hr','rbi','bb','k'].forEach(k => acc[k] = (acc[k]||0) + (ps[k]||0));
+    ['ab','r','h','d','t','hr','rbi','bb','k','dbo'].forEach(k => acc[k] = (acc[k]||0) + (ps[k]||0));
     return acc;
   }, {});
   const totSingles = (tot.h||0) - (tot.d||0) - (tot.t||0) - (tot.hr||0);
@@ -1522,7 +1522,7 @@ window.showBoxScore = function(gameId) {
       <div class="boxscore-table-wrap">
         <table class="boxscore-table">
           <thead>
-            <tr><th>Player</th><th>AB</th><th>R</th><th>H</th><th>1B</th><th>2B</th><th>3B</th><th>HR</th><th>RBI</th><th>BB</th><th>K</th><th>AVG</th></tr>
+            <tr><th>Player</th><th>AB</th><th>R</th><th>H</th><th>1B</th><th>2B</th><th>3B</th><th>HR</th><th>RBI</th><th>BB</th><th>K</th><th>DBO</th><th>AVG</th></tr>
           </thead>
           <tbody>${rows}</tbody>
           <tfoot>
@@ -1530,7 +1530,7 @@ window.showBoxScore = function(gameId) {
               <td>TOTALS</td>
               <td>${tot.ab||0}</td><td>${tot.r||0}</td><td>${tot.h||0}</td>
               <td>${totSingles}</td><td>${tot.d||0}</td><td>${tot.t||0}</td><td>${tot.hr||0}</td>
-              <td>${tot.rbi||0}</td><td>${tot.bb||0}</td><td>${tot.k||0}</td>
+              <td>${tot.rbi||0}</td><td>${tot.bb||0}</td><td>${tot.k||0}</td><td>${tot.dbo||0}</td>
               <td style="font-weight:800">${totAvg}</td>
             </tr>
           </tfoot>
@@ -2413,7 +2413,7 @@ window.switchProfileSeason = function(playerId, season) {
   const panel = document.getElementById('ptab-season');
   if (!panel) return;
   const statRows = [
-    [['G',s.g],['AB',s.ab],['H',s.h],['2B',s.d],['3B',s.t],['HR',s.hr],['RBI',s.rbi],['R',s.r],['BB',s.bb],['K',s.k]],
+    [['G',s.g],['AB',s.ab],['H',s.h],['2B',s.d],['3B',s.t],['HR',s.hr],['RBI',s.rbi],['R',s.r],['BB',s.bb],['K',s.k],['DBO',s.dbo]],
     [['AVG',s.avg],['OBP',s.obp],['SLG',s.slg],['OPS',s.ops],['TB',s.tb]]
   ];
   panel.innerHTML = `

@@ -2141,7 +2141,7 @@ function renderStatsEntry(keepTeam) {
 }
 
 function buildStatRow(p, existing = {}) {
-  const statKeys = ['ab','h','s','d','t','hr','hbp','k','bb','sf','rbi','r'];
+  const statKeys = ['ab','h','s','d','t','hr','hbp','k','dbo','bb','sf','rbi','r'];
   const inputs = statKeys.map(key =>
     `<input type="number" min="0" class="stat-input" data-player="${p.id}" data-stat="${key}" value="${existing[key]||''}" oninput="updateStatSummary()" style="padding:5px 2px;text-align:center;border:1px solid var(--border);border-radius:4px;font-size:13px;width:100%;outline:none" onfocus="this.style.borderColor='var(--red)'" onblur="this.style.borderColor='var(--border)'">`
   ).join('');
@@ -2168,7 +2168,7 @@ window.loadStatEntry = function(gameId) {
     return { ...p, _guestTeam: pt?.shortName };
   }).filter(Boolean);
 
-  const headerCols = ['AB','H','1B','2B','3B','HR','HBP','K','BB','SF','RBI','R'];
+  const headerCols = ['AB','H','1B','2B','3B','HR','HBP','K','DBO','BB','SF','RBI','R'];
 
   const rows = [...players, ...extraPlayers].map(p => {
     const existing = game.playerStats?.find(ps=>ps.playerId===p.id) || {};
@@ -2212,10 +2212,10 @@ window.loadStatEntry = function(gameId) {
         </div>
         <div id="stat-summary-row" class="stat-entry-row" style="margin-top:8px;background:var(--gray-light);border-radius:6px;font-weight:800;font-size:13px;border:2px solid var(--border)">
           <div class="player-label" style="font-weight:800;color:var(--text)">Team Totals</div>
-          ${['ab','h','s','d','t','hr','hbp','k','bb','sf','rbi','r'].map(k=>`<div id="sum-${k}" style="text-align:center;padding:5px 2px;color:var(--red)">0</div>`).join('')}
+          ${['ab','h','s','d','t','hr','hbp','k','dbo','bb','sf','rbi','r'].map(k=>`<div id="sum-${k}" style="text-align:center;padding:5px 2px;color:var(--red)">0</div>`).join('')}
         </div>
         <div style="margin-top:12px;padding:12px;background:var(--gray-light);border-radius:6px;font-size:12px;color:var(--gray)">
-          <strong>Key:</strong> AB=At Bats · H=Hits · 1B=Singles · 2B=Doubles · 3B=Triples · HR=Home Runs · HBP=Hit By Pitch · K=Strikeouts · BB=Walks · SF=Sac Fly · RBI · R=Runs
+          <strong>Key:</strong> AB=At Bats · H=Hits · 1B=Singles · 2B=Doubles · 3B=Triples · HR=Home Runs · HBP=Hit By Pitch · K=Strikeouts · DBO=Dead Ball Out (HR over the limit or foul after courtesy foul — counts as an out, include it in AB) · BB=Walks · SF=Sac Fly · RBI · R=Runs
         </div>
       </div>
     </div>
@@ -2295,7 +2295,7 @@ window.sortStatRows = function(by) {
 };
 
 window.updateStatSummary = function() {
-  const statKeys = ['ab','h','s','d','t','hr','hbp','k','bb','sf','rbi','r'];
+  const statKeys = ['ab','h','s','d','t','hr','hbp','k','dbo','bb','sf','rbi','r'];
   const totals = {};
   statKeys.forEach(k => totals[k] = 0);
   document.querySelectorAll('.stat-input').forEach(inp => {
@@ -2318,7 +2318,7 @@ window.saveStatsEntry = function(gameId) {
     const pid = input.dataset.player;
     const stat = input.dataset.stat;
     const v = parseInt(input.value) || 0;
-    if (!statsMap[pid]) statsMap[pid] = { playerId: pid, ab:0, h:0, s:0, d:0, t:0, hr:0, hbp:0, k:0, bb:0, sf:0, rbi:0, r:0 };
+    if (!statsMap[pid]) statsMap[pid] = { playerId: pid, ab:0, h:0, s:0, d:0, t:0, hr:0, hbp:0, k:0, dbo:0, bb:0, sf:0, rbi:0, r:0 };
     statsMap[pid][stat] = v;
   });
   
@@ -2413,8 +2413,8 @@ window.loadPlayerStatEdit = function(playerId) {
   });
 
   const teamIds = player.teams || [];
-  const statKeys = ['ab','h','s','d','t','hr','hbp','k','bb','sf','rbi','r'];
-  const statLabels = ['AB','H','1B','2B','3B','HR','HBP','K','BB','SF','RBI','R'];
+  const statKeys = ['ab','h','s','d','t','hr','hbp','k','dbo','bb','sf','rbi','r'];
+  const statLabels = ['AB','H','1B','2B','3B','HR','HBP','K','DBO','BB','SF','RBI','R'];
 
   const games = data.games
     .filter(g => teamIds.includes(g.teamId))
@@ -2481,7 +2481,7 @@ window.loadPlayerStatEdit = function(playerId) {
 };
 
 window.updatePsTotals = function() {
-  const statKeys = ['ab','h','s','d','t','hr','hbp','k','bb','sf','rbi','r'];
+  const statKeys = ['ab','h','s','d','t','hr','hbp','k','dbo','bb','sf','rbi','r'];
   const totals = {};
   statKeys.forEach(k => totals[k] = 0);
   document.querySelectorAll('.ps-inp').forEach(inp => {
@@ -2499,7 +2499,7 @@ window.savePlayerGameStat = function(gameId, playerId, btn) {
   const gameIdx = d.games.findIndex(g => g.id === gameId);
   if (gameIdx < 0) return;
 
-  const statKeys = ['ab','h','s','d','t','hr','hbp','k','bb','sf','rbi','r'];
+  const statKeys = ['ab','h','s','d','t','hr','hbp','k','dbo','bb','sf','rbi','r'];
   const statObj = { playerId };
   statKeys.forEach(k => statObj[k] = 0);
   document.querySelectorAll(`.ps-inp[data-game="${gameId}"]`).forEach(inp => {
@@ -3956,7 +3956,7 @@ async function _doScan(gameId, { imageBase64, mediaType, imageUrl }) {
       throw new Error('Could not parse stats. Raw response: ' + text.slice(0, 200));
     }
 
-    const statKeys = ['ab','h','s','d','t','hr','hbp','k','bb','sf','rbi','r'];
+    const statKeys = ['ab','h','s','d','t','hr','hbp','k','dbo','bb','sf','rbi','r'];
     let matched = 0, crossTeamAdded = [], flagged = [], unmatched = [];
 
     // Match a scorebook entry to a player object.

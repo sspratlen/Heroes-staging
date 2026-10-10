@@ -75,7 +75,7 @@ function getPlayerStats(playerId, filters = {}) {
   if (filters.dateFrom) games = games.filter(g => g.date >= filters.dateFrom);
   if (filters.dateTo) games = games.filter(g => g.date <= filters.dateTo);
   
-  const totals = { g: 0, ab: 0, h: 0, s: 0, d: 0, t: 0, hr: 0, hbp: 0, k: 0, bb: 0, sf: 0, rbi: 0, r: 0 };
+  const totals = { g: 0, ab: 0, h: 0, s: 0, d: 0, t: 0, hr: 0, hbp: 0, k: 0, dbo: 0, bb: 0, sf: 0, rbi: 0, r: 0 };
   games.forEach(game => {
     const stat = game.playerStats?.find(ps => ps.playerId === playerId);
     // Only count games where the player had at least one official AB.

@@ -135,11 +135,11 @@ table.admin-table { width: 100%; border-collapse: collapse; }
 .stat-entry-cell label { display: block; font-size: 10px; font-weight: 800; text-align: center; color: var(--gray); text-transform: uppercase; margin-bottom: 3px; }
 .stat-entry-cell input { width: 100%; padding: 8px 4px; text-align: center; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; font-weight: 700; outline: none; }
 .stat-entry-cell input:focus { border-color: var(--red); background: #fff5f5; }
-.stat-entry-row { display: grid; grid-template-columns: 180px repeat(12, 1fr); gap: 6px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.stat-entry-row { display: grid; grid-template-columns: 180px repeat(13, 1fr); gap: 6px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .stat-entry-row .player-label { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-entry-row input { width: 100%; padding: 6px 4px; text-align: center; border: 1px solid var(--border); border-radius: 4px; font-size: 13px; }
 .stat-entry-row input:focus { border-color: var(--red); }
-.stat-entry-header { display: grid; grid-template-columns: 180px repeat(12, 1fr); gap: 6px; padding: 8px 0; background: var(--gray-light); border-radius: 4px; margin-bottom: 4px; }
+.stat-entry-header { display: grid; grid-template-columns: 180px repeat(13, 1fr); gap: 6px; padding: 8px 0; background: var(--gray-light); border-radius: 4px; margin-bottom: 4px; }
 .stat-entry-header span { text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--gray); }
 .stat-entry-header span:first-child { text-align: left; padding-left: 8px; }
 
@@ -236,7 +236,7 @@ table.admin-table { width: 100%; border-collapse: collapse; }
 
   /* Stat entry grid: scroll container */
   .stat-entry-header, .stat-entry-row {
-    grid-template-columns: 110px repeat(12, 1fr);
+    grid-template-columns: 110px repeat(13, 1fr);
     min-width: 680px;
   }
 
