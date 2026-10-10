@@ -944,3 +944,6 @@ button { cursor: pointer; border: none; font-family: inherit; font-size: inherit
   .bc-table { font-size: 13px; }
   .bc-table th, .bc-table td { padding-left: 7px; padding-right: 7px; }
 }
+.bc-table tbody tr.bc-sub-row td { background: #F1E9D2; font-weight: 800; border-bottom: 1px solid #D9CCA8; }
+.bc-table tbody tr.bc-sub-row td.bc-club { font-style: italic; text-transform: none; }
+.bc-table tbody tr.bc-sub-row td.bc-yr { background: #F1E9D2; }

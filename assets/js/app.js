@@ -1238,25 +1238,34 @@ function renderPlayerCard(player, data) {
   const lowIsGood = new Set(['k','dbo']);
   const num = v => parseFloat(String(v).startsWith('.') ? '0' + v : v) || 0;
 
-  const lines = seasons.map(season => {
+  // One line per team per season; seasons split across teams also get a year-total line.
+  // Career highs are judged on full-season totals, not on individual team lines.
+  const teamName = id => data.teams.find(t => t.id === id)?.shortName || id;
+  const lines = [];
+  seasons.forEach(season => {
     const teamIds = [...new Set(data.games.filter(g => String(g.season) === season && played(g)).map(g => g.teamId))];
-    const club = teamIds.map(id => data.teams.find(t => t.id === id)?.shortName).filter(Boolean).sort().join(' / ');
-    return { season, club, s: getPlayerStats(player.id, { season }) };
+    const split = teamIds
+      .map(teamId => ({ season, club: teamName(teamId), s: getPlayerStats(player.id, { season, teamId }) }))
+      .sort((a, b) => b.s.g - a.s.g);
+    if (split.length === 1) { lines.push({ ...split[0], yearTotal: true }); return; }
+    split.forEach(l => lines.push(l));
+    lines.push({ season, club: `${split.length} Teams`, s: getPlayerStats(player.id, { season }), yearTotal: true, sub: true });
   });
 
   // Career highs only mean something with 2+ seasons
   const best = {};
-  if (lines.length > 1) cols.forEach(([, k]) => {
+  const yearLines = lines.filter(l => l.yearTotal);
+  if (yearLines.length > 1) cols.forEach(([, k]) => {
     if (lowIsGood.has(k)) return;
-    const max = Math.max(...lines.map(l => num(l.s[k])));
+    const max = Math.max(...yearLines.map(l => num(l.s[k])));
     if (max > 0) best[k] = max;
   });
 
-  const cell = (s, k, isTotal) => {
-    const hi = !isTotal && best[k] != null && num(s[k]) === best[k];
-    return `<td class="${hi ? 'bc-high' : ''}">${s[k]}</td>`;
+  const cell = (l, k) => {
+    const hi = l.yearTotal && best[k] != null && num(l.s[k]) === best[k];
+    return `<td class="${hi ? 'bc-high' : ''}">${l.s[k]}</td>`;
   };
-  const tot = getPlayerStats(player.id);
+  const tot = { s: getPlayerStats(player.id) };
 
   return `<div class="bc-card">
     <div class="bc-head">
@@ -1267,8 +1276,8 @@ function renderPlayerCard(player, data) {
     <div class="bc-scroll">
       <table class="bc-table">
         <thead><tr><th class="bc-yr">YR</th><th class="bc-club">CLUB</th>${cols.map(([l]) => `<th>${l}</th>`).join('')}</tr></thead>
-        <tbody>${lines.map(l => `<tr><td class="bc-yr">${l.season}</td><td class="bc-club">${l.club}</td>${cols.map(([, k]) => cell(l.s, k)).join('')}</tr>`).join('')}</tbody>
-        <tfoot><tr><td class="bc-yr" colspan="2">CAREER TOTALS</td>${cols.map(([, k]) => cell(tot, k, true)).join('')}</tr></tfoot>
+        <tbody>${lines.map(l => `<tr class="${l.sub ? 'bc-sub-row' : ''}"><td class="bc-yr">${l.season}</td><td class="bc-club">${l.club}</td>${cols.map(([, k]) => cell(l, k)).join('')}</tr>`).join('')}</tbody>
+        <tfoot><tr><td class="bc-yr" colspan="2">CAREER TOTALS</td>${cols.map(([, k]) => cell(tot, k)).join('')}</tr></tfoot>
       </table>
     </div>
   </div>`;
